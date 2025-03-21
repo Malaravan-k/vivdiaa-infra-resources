@@ -1,0 +1,30 @@
+version: 0.2
+
+
+phases:
+  pre_build:
+    commands:
+
+      - echo Logging in to Amazon ECR...
+      - ls
+      - ls -lhrt
+      - pwd 
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+      - echo $IMAGE_TAG
+      # - mkdir env
+      - echo "IMAGE_TAG=$IMAGE_TAG" >> env/.env.$STAGE
+      - cat env/.env.$STAGE
+      - ls -lart env
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build -t ${PREFIX}-image-detection .
+      - docker tag ${PREFIX}-image-detection:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-image-detection-${STAGE}-ecr:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Pushing Docker image to Amazon ECR...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-image-detection-${STAGE}-ecr:$IMAGE_TAG
+artifacts:
+  files:
+    - '**/*'

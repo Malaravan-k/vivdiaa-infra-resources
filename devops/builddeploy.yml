@@ -1,0 +1,17 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install --upgrade pip
+      - pip install --upgrade awscli aws-sam-cli
+      - pip3 install pyOpenSSL --upgrade
+      - echo "Deploying to ${STAGE}"
+      - ls -lart
+      - . env/.env.$STAGE
+  build:
+    commands:
+      - ls -ltr
+      - echo $IMAGE_TAG
+      - sam deploy -t devops/infra.yaml --region=${AWS_DEFAULT_REGION} --stack-name $STACK_NAME --no-fail-on-empty-changeset --capabilities=CAPABILITY_NAMED_IAM CAPABILITY_IAM --parameter-overrides "ParameterKey=Subnet1,ParameterValue=${PublicSubnet1}" "ParameterKey=Subnet2,ParameterValue=${PublicSubnet2}" "ParameterKey=SecurityGroup,ParameterValue=${SecurityGroup}" "ParameterKey=Stage,ParameterValue=${STAGE}" "ParameterKey=ResourcePrefix,ParameterValue=${PREFIX}" "ParameterKey=ModelBucket,ParameterValue=${ModelBucket}" "ParameterKey=ModelPath,ParameterValue=${ModelPath}" "ParameterKey=ModelFilename,ParameterValue=${ModelFilename}" "ParameterKey=ConfidenceLevel,ParameterValue=${ConfidenceLevel}" "ParameterKey=ImageTag,ParameterValue=${IMAGE_TAG}" "ParameterKey=ApiUrl,ParameterValue=${ApiUrl}" "ParameterKey=QueueUrl,ParameterValue=${QueueUrl}" "ParameterKey=BranchName,ParameterValue=${BRANCH_NAME}" "ParameterKey=RepoName,ParameterValue=${REPO_NAME}" "ParameterKey=Region,ParameterValue=${REGION}" "ParameterKey=RepoUrl,ParameterValue=${REPO_URL}"

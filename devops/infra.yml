@@ -1,0 +1,437 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation Template for creating Aurora MySQL DB cluster and cognito
+Parameters:
+  ImageTag:
+    Type: String
+    Default: 'latest'
+  Subnet1:
+    Type: String
+    Default: ""
+  Subnet2:
+    Type: String
+    Default: ""
+  SecurityGroup:
+    Type: String
+    Default: ""
+  ResourcePrefix:
+    Type: String
+    Default: ""
+  Stage:
+    Type: String
+    Default: dev
+  ModelBucket:
+    Type: String
+    Default: ""
+  ModelPath:
+    Type: String
+    Default: ""
+  ModelFilename:
+    Type: String
+    Default: ""
+  ConfidenceLevel:
+    Type: String
+    Default: ""
+  ApiUrl:
+    Type: String
+    Default: ""
+  QueueUrl:
+    Type: String
+    Default: ""
+  RepoName:
+    Type: String
+    Default: ""
+  BranchName:
+    Type: String
+    Default: ""
+  Region:
+    Type: String
+    Default: ""
+  RepoUrl:
+    Type: String
+    Default: ""
+
+Resources:
+# # Resource for RDS
+#   VPC:
+#     Type: 'AWS::EC2::VPC'
+#     Properties:
+#       CidrBlock: '10.0.0.0/16'
+#       EnableDnsSupport: true
+#       EnableDnsHostnames: true
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ResourcePrefix}-${Stage}-vpc'
+
+#   InternetGateway:
+#     Type: 'AWS::EC2::InternetGateway'
+#     Properties:
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ResourcePrefix}-${Stage}-igw'
+
+#   AttachGateway:
+#     Type: 'AWS::EC2::VPCGatewayAttachment'
+#     Properties:
+#       VpcId: !Ref VPC
+#       InternetGatewayId: !Ref InternetGateway
+
+#   PublicSubnet1:
+#     Type: 'AWS::EC2::Subnet'
+#     Properties:
+#       VpcId: !Ref VPC
+#       CidrBlock: '10.0.1.0/24'
+#       AvailabilityZone: !Select [0, !GetAZs '']
+#       MapPublicIpOnLaunch: true
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ResourcePrefix}-${Stage}-subnet1'
+
+#   PublicSubnet2:
+#     Type: 'AWS::EC2::Subnet'
+#     Properties:
+#       VpcId: !Ref VPC
+#       CidrBlock: '10.0.2.0/24'
+#       AvailabilityZone: !Select [1, !GetAZs '']
+#       MapPublicIpOnLaunch: true
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ResourcePrefix}-${Stage}-subnet2'
+
+#   RouteTable:
+#     Type: 'AWS::EC2::RouteTable'
+#     Properties:
+#       VpcId: !Ref VPC
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ResourcePrefix}-${Stage}-rtb'
+
+#   PublicRoute:
+#     Type: 'AWS::EC2::Route'
+#     Properties:
+#       RouteTableId: !Ref RouteTable
+#       DestinationCidrBlock: '0.0.0.0/0'
+#       GatewayId: !Ref InternetGateway
+
+#   SubnetRouteTableAssociation1:
+#     Type: 'AWS::EC2::SubnetRouteTableAssociation'
+#     Properties:
+#       SubnetId: !Ref PublicSubnet1
+#       RouteTableId: !Ref RouteTable
+
+#   SubnetRouteTableAssociation2:
+#     Type: 'AWS::EC2::SubnetRouteTableAssociation'
+#     Properties:ecr
+#       SubnetId: !Ref PublicSubnet2
+#       RouteTableId: !Ref RouteTable
+
+#   DBSubnetGroup:
+#     Type: 'AWS::RDS::DBSubnetGroup'
+#     Properties:
+#       DBSubnetGroupDescription: 'DB Subnet groups'
+#       DBSubnetGroupName: !Sub '${ResourcePrefix}-${Stage}-subnetgroup'
+#       SubnetIds:
+#         - !Ref PublicSubnet1
+#         - !Ref PublicSubnet2    
+      
+#   DBSecurityGroup:
+#     Type: 'AWS::EC2::SecurityGroup'
+#     Properties:
+#       GroupDescription: 'Security group for RDS instance'
+#       VpcId: !Ref VPC
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 5432
+#           ToPort: 5432
+#           CidrIp: '0.0.0.0/0'
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ResourcePrefix}-${Stage}-db-sg'
+
+#   RDSDBInstance:
+#     Type: 'AWS::RDS::DBInstance'
+#     Properties:
+#       DBInstanceIdentifier: !Sub '${ResourcePrefix}-${Stage}-image-processing'
+#       Engine: postgres
+#       EngineVersion: '16.1'
+#       DBInstanceClass: !Ref DBInstanceClass
+#       PubliclyAccessible: true
+#       EnablePerformanceInsights: true
+#       MonitoringInterval: 60 
+#       MonitoringRoleArn: !GetAtt EnhancedMonitoringRole.Arn
+#       PerformanceInsightsRetentionPeriod: 7
+#       DBName: leardon
+#       MasterUsername: !Sub '${Username}'
+#       MasterUserPassword: !Sub '${Password}'
+#       VPCSecurityGroups:
+#         - !GetAtt DBSecurityGroup.GroupId
+#       StorageType: gp2
+#       StorageEncrypted: true
+#       AllocatedStorage: 20
+#       BackupRetentionPeriod: 7
+#       MultiAZ: false
+#       DBSubnetGroupName: !Ref DBSubnetGroup
+
+#   EnhancedMonitoringRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       RoleName: !Sub '${ResourcePrefix}-${Stage}-monitoring-role'
+#       AssumeRolePolicyDocument:
+#         Version: '2012-10-17'
+#         Statement:
+#         - Sid: ''
+#           Effect: Allow
+#           Principal:
+#             Service: monitoring.rds.amazonaws.com
+#           Action: sts:AssumeRole
+#       ManagedPolicyArns:
+#       - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+#       Path: "/"   
+
+  #Resource for ECS
+  MyTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ResourcePrefix}-${Stage}-ecs-task-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+        - PolicyName: ECSServiceAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:*
+                  - dynamodb:*
+                  - s3:*
+                  - sqs:*
+                  - apigateway:*
+                Resource: "*"
+        
+  MyTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ResourcePrefix}-${Stage}-task-definition
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '512'
+      Memory: '1024'
+      EphemeralStorage:
+        SizeInGiB: 21
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt MyTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt MyTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: ocilex-image-detection-container
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ResourcePrefix}-image-detection-dev-ecr:${ImageTag}"
+          Cpu: 0
+          Memory: 1024
+          PortMappings:
+            - Name: "flask_port"
+              ContainerPort: 5000
+              HostPort: 5000
+              Protocol: tcp
+              AppProtocol: http
+          Essential: true
+          EntryPoint:
+            - /bin/bash
+            - -c
+          Command:
+            - bash /home/ubuntu/initial_script.sh
+          Environment: 
+            - Name: MODEL_BUCKET
+              Value: !Ref ModelBucket
+            - Name: REGION
+              Value: !Ref Region
+            - Name: REPO_URL
+              Value: !Ref RepoUrl
+          EnvironmentFiles: []
+          MountPoints: []
+          VolumesFrom: []
+          WorkingDirectory: /home/ubuntu
+          Ulimits: []
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/ocilex-image-detection-task-definition-updated
+              awslogs-create-group: "true"
+              awslogs-region: us-east-1
+              awslogs-stream-prefix: ecs
+            SecretOptions: []
+          SystemControls: []
+  
+  
+
+  MyECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${ResourcePrefix}-${Stage}-ecs-cluster
+
+  MyService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref MyECSCluster
+      ServiceName: !Sub ${ResourcePrefix}-${Stage}-service
+      TaskDefinition: !Ref MyTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref Subnet1
+            - !Ref Subnet2
+          SecurityGroups:
+            - !Ref SecurityGroup
+          AssignPublicIp: ENABLED
+  # resources for cognito
+  # CognitoUserPool:
+  #   Type: "AWS::Cognito::UserPool"
+  #   Properties:
+  #     UserPoolName: !Sub ${ResourcePrefix}-${Stage}-UserPool
+  #     AutoVerifiedAttributes:
+  #       - "email"
+  #     AccountRecoverySetting:
+  #       RecoveryMechanisms:
+  #         - Name: verified_email
+  #           Priority: 1
+  #     AdminCreateUserConfig:      
+  #       InviteMessageTemplate:
+  #         EmailMessage: !Join 
+  #           - "" 
+  #           - - "Login into Ocliex admin portal application at "
+  #             - " username {username} and temporary password {####}"
+  #         EmailSubject: !Join 
+  #           - "" 
+  #           - - "Your temporary password for Ocliex admin portal application"
+  #     Schema:
+  #       - AttributeDataType: "String"
+  #         Name: email
+  #         Required: True
+  #         Mutable: True
+  #       - AttributeDataType: "String"
+  #         Name: tenantId          
+  #       - AttributeDataType: "String"
+  #         Name: phone
+  #         Required: False
+  #         Mutable: True
+  #       - AttributeDataType: "String"
+  #         Name: userId
+  #         Required: False
+  #         Mutable: True
+  # # CognitoIdentityProviderGoogle:
+  # #   Type: "AWS::Cognito::UserPoolIdentityProvider"
+  # #   DependsOn: CognitoUserPool
+  # #   Properties:
+  # #     ProviderName: Google
+  # #     UserPoolId: !Ref CognitoUserPool
+  # #     ProviderType: Google
+  # #     ProviderDetails:
+  # #       client_id: !Ref GoogleClientId
+  # #       client_secret: !Ref GoogleClientSecret
+  # #       authorize_scopes: "email profile openid"
+  # #     AttributeMapping:
+  # #       email: "email"
+  # #       username: "sub"  
+
+
+  # # CognitoIdentityProviderFacebook:
+  # #   Type: "AWS::Cognito::UserPoolIdentityProvider"
+  # #   DependsOn: CognitoUserPool
+  # #   Properties:
+  # #     ProviderName: Facebook
+  # #     UserPoolId: !Ref CognitoUserPool
+  # #     ProviderType: Facebook
+  # #     ProviderDetails:
+  # #       client_id: !Ref FacebookAppId
+  # #       client_secret: !Ref FacebookAppSecret
+  # #       authorize_scopes: "public_profile email"
+  # #     AttributeMapping:
+  # #       email: "email"
+  # #       username: "id"
+  
+
+  # AuthenticationFunctionRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: !Sub ${ResourcePrefix}-${Stage}-cognito-pre-authentication-function-role
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: lambda.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     Policies:
+  #       - PolicyName: !Sub ${ResourcePrefix}-pre-authentication-function-policy
+  #         PolicyDocument:
+  #           Version: "2012-10-17"
+  #           Statement:
+  #             - Effect: Allow
+  #               Action:
+  #                 - "cognito-idp:*"
+  #               Resource: "*"
+
+                
+       
+  # CognitoUserPoolClient:
+  #   Type: "AWS::Cognito::UserPoolClient"
+  #   # DependsOn:
+  #     # - CognitoIdentityProviderGoogle
+  #     # - CognitoIdentityProviderFacebook
+  #   Properties:
+  #     ClientName: !Sub ${ResourcePrefix}-${Stage}-Client
+  #     GenerateSecret: false
+  #     UserPoolId: !Ref CognitoUserPool
+  #     AllowedOAuthFlowsUserPoolClient: True
+  #     AllowedOAuthFlows:
+  #       - code
+  #       - implicit
+  #     SupportedIdentityProviders:
+  #       - COGNITO
+  #       # - Google
+  #       # - Facebook
+  #     CallbackURLs:
+  #       # - !Join ["",["https://",!Ref TenantUserPoolCallbackURLParameter, "/","upload"]]
+  #       # - !Join ["",["https://",!Ref TenantUserPoolCallbackURLParameter]]
+  #       - !Sub ${ResourcePrefix}://
+  #     LogoutURLs:
+  #       # - !Join ["",["https://",!Ref TenantUserPoolCallbackURLParameter]]
+  #       - !Sub ${ResourcePrefix}://  
+  #     AllowedOAuthScopes:
+  #       - email
+  #       - openid
+  #       - profile
+  # CognitoUserPoolDomain:
+  #   Type: AWS::Cognito::UserPoolDomain
+  #   Properties:
+  #     Domain: !Join ["-", [!Ref Stage, !Ref ResourcePrefix, pooledtenant, !Ref "AWS::AccountId"]]
+  #     UserPoolId: !Ref CognitoUserPool 
+  
+Outputs:
+  MyTaskExecutionRole:
+    Value: !GetAtt MyTaskExecutionRole.Arn
+  
