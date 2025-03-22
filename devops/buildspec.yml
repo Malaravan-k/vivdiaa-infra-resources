@@ -20,11 +20,11 @@ phases:
     commands:
       - echo Building Docker county...
       - docker build -t ${PREFIX}-county-overview .
-      - docker tag ${PREFIX}-county-overview:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr-ecr:$IMAGE_TAG
+      - docker tag ${PREFIX}-county-overview:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr:$IMAGE_TAG
   post_build:
     commands:
       - echo Pushing Docker county to Amazon ECR...
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr-ecr:$IMAGE_TAG
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr:$IMAGE_TAG
 artifacts:
   files:
     - '**/*'
