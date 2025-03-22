@@ -1,149 +1,141 @@
-AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  AWS CloudFormation Template for creating Aurora MySQL DB cluster and cognito
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+
 Parameters:
-  ImageTag:
+  stage:
     Type: String
-    Default: 'latest'
-  Subnet1:
-    Type: String
-    Default: ""
-  Subnet2:
-    Type: String
-    Default: ""
-  SecurityGroup:
-    Type: String
-    Default: ""
+    Default: "stg"
   ResourcePrefix:
     Type: String
-    Default: ""
-  Stage:
+    Default: "16s"
+  ResourcePrefix:
     Type: String
-    Default: dev
+    Default: "amili"
+  Image:
+    Type: String
+    Default: ""
   Region:
     Type: String
     Default: ""
- 
+  VPCID:
+    Type: String  
+    Default: ""
+  SubnetID1:
+    Type: String
+    Default: ""
+  SubnetID2:
+    Type: String
+    Default: ""
+  SubnetID3:
+    Type: String
+    Default: ""
+  
+
+
 Resources:
-  #Resource for ECS
-  MyTaskExecutionRole:
-    Type: AWS::IAM::Role
+
+  CountySecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
     Properties:
-      RoleName: !Sub ${ResourcePrefix}-${Stage}-ecs-task-execution-role
+      GroupName: !Sub ${ResourcePrefix}-${stage}-SG
+      GroupDescription: "Security group with self-referencing inbound rule"
+      VpcId: !Ref VPCID 
+      # SecurityGroupEgress:
+      #   - IpProtocol: "-1" 
+      #     CidrIp: "0.0.0.0/0"
+
+  MLSecurityGroupIngressHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt CountySecurityGroup.GroupId
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !GetAtt CountySecurityGroup.GroupId
+
+  CountyLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub ${ResourcePrefix}-${stage}-logs
+      RetentionInDays: 30
+
+  IAMRoleECRBatchProd:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${ResourcePrefix}-${stage}-${Region}-Job-role"
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Effect: "Allow"
             Principal:
               Service:
-                - ecs-tasks.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: ECRAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: '*'
-        - PolicyName: ECSServiceAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecs:*
-                  - dynamodb:*
-                  - s3:*
-                  - sqs:*
-                  - apigateway:*
-                Resource: "*"
-        
-  MyTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Sub ${ResourcePrefix}-${Stage}-task-definition
-      RequiresCompatibilities:
-        - FARGATE
-      NetworkMode: awsvpc
-      Cpu: '512'
-      Memory: '1024'
-      EphemeralStorage:
-        SizeInGiB: 21
-      RuntimePlatform:
-        CpuArchitecture: X86_64
-        OperatingSystemFamily: LINUX
-      ExecutionRoleArn: !GetAtt MyTaskExecutionRole.Arn
-      TaskRoleArn: !GetAtt MyTaskExecutionRole.Arn
-      ContainerDefinitions:
-        - Name: ocilex-image-detection-container
-          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ResourcePrefix}-image-detection-dev-ecr:${ImageTag}"
-          Cpu: 0
-          Memory: 1024
-          PortMappings:
-            - Name: "flask_port"
-              ContainerPort: 5000
-              HostPort: 5000
-              Protocol: tcp
-              AppProtocol: http
-          Essential: true
-          EntryPoint:
-            - /bin/bash
-            - -c
-          Command:
-            - bash /home/ubuntu/initial_script.sh
-          Environment: 
-            - Name: REGION
-              Value: !Ref Region
-            - Name: REPO_URL
-              Value: !Ref RepoUrl
-          EnvironmentFiles: []
-          MountPoints: []
-          VolumesFrom: []
-          WorkingDirectory: /home/ubuntu
-          Ulimits: []
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: /ecs/ocilex-image-detection-task-definition-updated
-              awslogs-create-group: "true"
-              awslogs-region: us-east-1
-              awslogs-stream-prefix: ecs
-            SecretOptions: []
-          SystemControls: []
-  
-  
+                - "ecs-tasks.amazonaws.com"
+                - "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"  
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AWSBatchFullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+        - "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 
-  MyECSCluster:
-    Type: AWS::ECS::Cluster
+  InstanceProfileECRBatchProd:
+    Type: "AWS::IAM::InstanceProfile"
     Properties:
-      ClusterName: !Sub ${ResourcePrefix}-${Stage}-ecs-cluster
+      InstanceProfileName: !Sub "${ResourcePrefix}-${stage}-${Region}-Job-instance-profile"
+      Roles:
+        - !Ref IAMRoleECRBatchProd
 
-  MyService:
-    Type: AWS::ECS::Service
+
+
+  #################################### research ########################################
+  ResearchJobDefinition:
+    Type: AWS::Batch::JobDefinition
     Properties:
-      Cluster: !Ref MyECSCluster
-      ServiceName: !Sub ${ResourcePrefix}-${Stage}-service
-      TaskDefinition: !Ref MyTaskDefinition
-      LaunchType: FARGATE
-      DesiredCount: 1
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          Subnets:
-            - !Ref Subnet1
-            - !Ref Subnet2
-          SecurityGroups:
-            - !Ref SecurityGroup
-          AssignPublicIp: ENABLED
-  
-Outputs:
-  MyTaskExecutionRole:
-    Value: !GetAtt MyTaskExecutionRole.Arn
-  
+      Type: container
+      JobDefinitionName: !Sub ${ResourcePrefix}-${stage}-research
+      ContainerProperties:
+        Command:
+          - bash
+          - "/data/get_git_repo.sh"
+        Privileged: true
+        JobRoleArn: !GetAtt IAMRoleECRBatchProd.Arn
+        ExecutionRoleArn: !GetAtt IAMRoleECRBatchProd.Arn
+        ResourceRequirements:
+          - Type: MEMORY
+            Value: '70000'
+          - Type: VCPU
+            Value: '36'
+        Image: !Sub $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-county-overview-${STAGE}-ecr:$IMAGE_TAG
+        LogConfiguration:
+          LogDriver: 'awslogs'
+          Options:
+            awslogs-group: !Ref CountyLogGroup
+      
+
+  ResearchComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    DependsOn: IAMRoleECRBatchProd
+    Properties:
+      Type: MANAGED
+      ServiceRole: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
+      ComputeEnvironmentName: !Sub ${ResourcePrefix}-${stage}-${ResourcePrefix}-research
+      ComputeResources:
+        MaxvCpus: 288
+        SecurityGroupIds:
+          - !GetAtt CountySecurityGroup.GroupId 
+        Type: EC2
+        Subnets:
+          - !Ref SubnetID1
+          - !Ref SubnetID2
+          - !Ref SubnetID3
+        MinvCpus: 0
+        AllocationStrategy: BEST_FIT_PROGRESSIVE
+        InstanceRole: !Ref InstanceProfileECRBatchProd
+        InstanceTypes:
+          - c5.9xlarge
+      State: ENABLED

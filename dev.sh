@@ -1,4 +1,5 @@
 export SECURITYGROUP="sg-00c3d1af546539af7"
 export PUBLIC_SUBNET_1="subnet-02669f90a1693bd6b"
 export PUBLIC_SUBNET_2="subnet-0b1bc44a8d49ad43c"
-export IMAGE_TAG="latest"
+export PUBLIC_SUBNET_2="subnet-03803b4a7d2a5de7c"
+export VPCID="vpc-045ac39f2b4f42e9f"

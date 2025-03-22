@@ -18,13 +18,13 @@ phases:
       - ls -lart env
   build:
     commands:
-      - echo Building Docker image...
-      - docker build -t ${PREFIX}-image-detection .
-      - docker tag ${PREFIX}-image-detection:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-image-detection-${STAGE}-ecr:$IMAGE_TAG
+      - echo Building Docker county...
+      - docker build -t ${PREFIX}-county-overview .
+      - docker tag ${PREFIX}-county-overview:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr-ecr:$IMAGE_TAG
   post_build:
     commands:
-      - echo Pushing Docker image to Amazon ECR...
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-image-detection-${STAGE}-ecr:$IMAGE_TAG
+      - echo Pushing Docker county to Amazon ECR...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr-ecr:$IMAGE_TAG
 artifacts:
   files:
     - '**/*'
