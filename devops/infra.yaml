@@ -1,4 +1,4 @@
----
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation template for AWS Batch with Fargate, EventBridge schedule, specific S3 event notifications, and job definitions with commands.
 
@@ -484,4 +484,3 @@ Outputs:
   EquityFindingsTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers EquityFindings job
     Value: !GetAtt EquityFindingsTriggerLambda.Arn
----
