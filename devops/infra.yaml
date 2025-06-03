@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS CloudFormation template for AWS Batch with Fargate, defining three job definitions (CountyOverview, PdfExtraction, EquityFindings) using ECR images.
+Description: AWS CloudFormation template for AWS Batch with Fargate, EventBridge schedule, specific S3 event notifications, and job definitions with commands.
 
 Parameters:
   Environment:
@@ -36,12 +36,12 @@ Parameters:
   ContainerVcpus:
     Type: String
     Description: Number of vCPUs for the containers
-    Default: '0.25'
+    Default: '1'
     AllowedValues: ['0.25', '0.5', '1', '2', '4']
   ContainerMemory:
     Type: String
     Description: Memory for the containers in MiB
-    Default: '512'
+    Default: '2048'
     AllowedValues: ['512', '1024', '2048', '4096', '8192', '16384', '30720']
   ImageTag:
     Type: String
@@ -49,6 +49,15 @@ Parameters:
     Description: Tag for the ECR images (e.g., 202506021515 or latest)
 
 Resources:
+  # S3 Bucket for County Details Logs
+  CountyDetailsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-county-details
+
   # IAM Role for AWS Batch Service
   BatchServiceRole:
     Type: AWS::IAM::Role
@@ -101,6 +110,15 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Sub arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/batch/job/${ResourcePrefix}-${Environment}:*
+        - PolicyName: S3WriteAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details/*
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Tags:
@@ -152,6 +170,9 @@ Resources:
         - FARGATE
       ContainerProperties:
         Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-county-overview-${Environment}-ecr:${ImageTag}
+        Command:
+          - python3
+          - /app/county_overview.py
         FargatePlatformConfiguration:
           PlatformVersion: LATEST
         NetworkConfiguration:
@@ -187,6 +208,9 @@ Resources:
         - FARGATE
       ContainerProperties:
         Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-pdf-extraction-${Environment}-ecr:${ImageTag}
+        Command:
+          - python3
+          - /app/pdf_extraction.py
         FargatePlatformConfiguration:
           PlatformVersion: LATEST
         NetworkConfiguration:
@@ -222,6 +246,9 @@ Resources:
         - FARGATE
       ContainerProperties:
         Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-equity-findings-${Environment}-ecr:${ImageTag}
+        Command:
+          - python3
+          - /app/equity_findings.py
         FargatePlatformConfiguration:
           PlatformVersion: LATEST
         NetworkConfiguration:
@@ -247,7 +274,7 @@ Resources:
       - ECSTaskExecutionRole
       - LogGroup
 
-  # CloudWatch Log Group for Job Logs
+  # CloudWatch Log Group for Batch Job Logs
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -256,6 +283,172 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${Environment}-log-group
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ResourcePrefix}-${Environment}-lambda-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/${ResourcePrefix}-${Environment}-*:*
+        - PolicyName: BatchSubmitJobAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - batch:SubmitJob
+                  - batch:DescribeJobs
+                Resource:
+                  - !Sub arn:${AWS::Partition}:batch:${Region}:${AWS::AccountId}:job-definition/${ResourcePrefix}-${Environment}-*
+                  - !Sub arn:${AWS::Partition}:batch:${Region}:${AWS::AccountId}:job-queue/${ResourcePrefix}-${Environment}-fargate-job-queue
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-lambda-execution-role
+
+  # Lambda Function to Trigger CountyOverview Job (via EventBridge Schedule)
+  CountyOverviewTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ResourcePrefix}-${Environment}-county-overview-trigger-lambda
+      Handler: county_overview_trigger.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Code:
+        CodeUri: ../src/
+      Environment:
+        Variables:
+          JOB_QUEUE: !Ref FargateJobQueue
+          JOB_DEFINITION: !Ref CountyOverviewJobDefinition
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-county-overview-trigger-lambda
+
+  # EventBridge Rule to Trigger CountyOverview Lambda Daily at 19:00 UTC
+  CountyOverviewScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${ResourcePrefix}-${Environment}-county-overview-schedule
+      Description: Triggers CountyOverview job daily at 19:00 UTC
+      ScheduleExpression: cron(0 19 * * ? *)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CountyOverviewTriggerLambda.Arn
+          Id: CountyOverviewTriggerLambdaTarget
+
+  # Permission for EventBridge to Invoke CountyOverview Lambda
+  CountyOverviewLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CountyOverviewTriggerLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CountyOverviewScheduleRule.Arn
+
+  # S3 Bucket with Combined Event Notifications for PdfExtraction and EquityFindings Triggers
+  CountyDetailsBucketWithNotifications:
+    Type: AWS::S3::Bucket
+    DependsOn:
+      - PdfExtractionTriggerLambdaPermission
+      - EquityFindingsTriggerLambdaPermission
+    Properties:
+      BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: logs/
+                  - Name: suffix
+                    Value: .log
+            Lambda: !GetAtt PdfExtractionTriggerLambda.Arn
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: pdf_extraction_logs/
+                  - Name: suffix
+                    Value: .log
+            Lambda: !GetAtt EquityFindingsTriggerLambda.Arn
+
+  # Lambda Function to Trigger PdfExtraction Job (via S3 Event)
+  PdfExtractionTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-trigger-lambda
+      Handler: pdf_extraction_trigger.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Code:
+        CodeUri: ../src/
+      Environment:
+        Variables:
+          JOB_QUEUE: !Ref FargateJobQueue
+          JOB_DEFINITION: !Ref PdfExtractionJobDefinition
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-trigger-lambda
+
+  # Permission for S3 to Invoke PdfExtraction Lambda
+  PdfExtractionTriggerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PdfExtractionTriggerLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+
+  # Lambda Function to Trigger EquityFindings Job (via S3 Event)
+  EquityFindingsTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ResourcePrefix}-${Environment}-equity-findings-trigger-lambda
+      Handler: equity_findings_trigger.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Code:
+        CodeUri: ../src/
+      Environment:
+        Variables:
+          JOB_QUEUE: !Ref FargateJobQueue
+          JOB_DEFINITION: !Ref EquityFindingsJobDefinition
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-equity-findings-trigger-lambda
+
+  # Permission for S3 to Invoke EquityFindings Lambda
+  EquityFindingsTriggerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EquityFindingsTriggerLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
 
 Outputs:
   ComputeEnvironmentArn:
@@ -279,4 +472,16 @@ Outputs:
   BatchServiceRoleArn:
     Description: ARN of the Batch Service Role
     Value: !GetAtt BatchServiceRole.Arn
+  CountyDetailsBucketName:
+    Description: Name of the County Details S3 Bucket
+    Value: !Ref CountyDetailsBucket
+  CountyOverviewTriggerLambdaArn:
+    Description: ARN of the Lambda function that triggers CountyOverview job
+    Value: !GetAtt CountyOverviewTriggerLambda.Arn
+  PdfExtractionTriggerLambdaArn:
+    Description: ARN of the Lambda function that triggers PdfExtraction job
+    Value: !GetAtt PdfExtractionTriggerLambda.Arn
+  EquityFindingsTriggerLambdaArn:
+    Description: ARN of the Lambda function that triggers EquityFindings job
+    Value: !GetAtt EquityFindingsTriggerLambda.Arn
 ---
