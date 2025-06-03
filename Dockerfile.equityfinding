@@ -1,0 +1,27 @@
+# Use Python 3.9 as the base image
+FROM python:3.9
+
+# Set working directory
+WORKDIR /app
+
+# Copy your Python script and requirements
+COPY equity_finding/equity_finding.py /app
+COPY equity_finding/requirements.txt /app
+COPY equity_finding/logger_config.py /app
+# COPY equity_finding/geojson_cache /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws
+
+# Make sure the /app directory is accessible
+RUN chmod 777 -R /app
+
+
+# Default command to run the script
+CMD ["python3", "equity_finding.py"]

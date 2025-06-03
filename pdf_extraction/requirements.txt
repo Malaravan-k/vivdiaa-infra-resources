@@ -1,0 +1,10 @@
+requests
+playwright
+boto3
+PyMuPDF
+sqlalchemy
+langchain
+langchain-openai
+pydantic
+psycopg2
+python-dotenv
