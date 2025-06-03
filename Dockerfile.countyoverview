@@ -1,0 +1,25 @@
+# Use official Python image
+FROM python:3.9
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY county_overview.py /app
+COPY county_info.json /app
+COPY db_config.py /app
+
+RUN chmod 777 -R /app
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    boto3 \
+    requests \
+    pandas \
+    xlsxwriter \
+    openpyxl \
+    sqlalchemy \
+    psycopg2-binary
+
+# Set the command to run the script
+# CMD ["python", "county_overview.py"]

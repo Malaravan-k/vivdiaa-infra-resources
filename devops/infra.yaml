@@ -1,141 +1,282 @@
+---
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: 'AWS::Serverless-2016-10-31'
-
+Description: AWS CloudFormation template for AWS Batch with Fargate, defining three job definitions (CountyOverview, PdfExtraction, EquityFindings) using ECR images.
 
 Parameters:
-  stage:
+  Environment:
     Type: String
-    Default: "stg"
+    Default: "dev"
+    Description: Deployment environment (e.g., dev, prod)
   ResourcePrefix:
-    Type: String
-    Default: "16s"
-  ResourcePrefix:
-    Type: String
-    Default: "amili"
-  Image:
     Type: String
     Default: ""
+    Description: Prefix for resource names
   Region:
     Type: String
     Default: ""
-  VPCID:
-    Type: String  
-    Default: ""
-  SubnetID1:
+    Description: AWS Region for deployment
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for Fargate resources
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet IDs for Fargate resources (public or private with NAT gateway)
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security Group IDs for Fargate resources
+  PipelineArtifactBucket:
     Type: String
     Default: ""
-  SubnetID2:
+    Description: S3 bucket for pipeline artifacts
+  MaxvCpus:
+    Type: Number
+    Description: Maximum vCPUs for the compute environment
+    Default: 40
+    MinValue: 1
+  ContainerVcpus:
     Type: String
-    Default: ""
-  SubnetID3:
+    Description: Number of vCPUs for the containers
+    Default: '0.25'
+    AllowedValues: ['0.25', '0.5', '1', '2', '4']
+  ContainerMemory:
     Type: String
-    Default: ""
-  
-
+    Description: Memory for the containers in MiB
+    Default: '512'
+    AllowedValues: ['512', '1024', '2048', '4096', '8192', '16384', '30720']
+  ImageTag:
+    Type: String
+    Default: "latest"
+    Description: Tag for the ECR images (e.g., 202506021515 or latest)
 
 Resources:
-
-  CountySecurityGroup:
-    Type: "AWS::EC2::SecurityGroup"
+  # IAM Role for AWS Batch Service
+  BatchServiceRole:
+    Type: AWS::IAM::Role
     Properties:
-      GroupName: !Sub ${ResourcePrefix}-${stage}-SG
-      GroupDescription: "Security group with self-referencing inbound rule"
-      VpcId: !Ref VPCID 
-      # SecurityGroupEgress:
-      #   - IpProtocol: "-1" 
-      #     CidrIp: "0.0.0.0/0"
-
-  MLSecurityGroupIngressHTTP:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !GetAtt CountySecurityGroup.GroupId
-      IpProtocol: "-1"
-      SourceSecurityGroupId: !GetAtt CountySecurityGroup.GroupId
-
-  CountyLogGroup:
-    Type: "AWS::Logs::LogGroup"
-    Properties:
-      LogGroupName: !Sub ${ResourcePrefix}-${stage}-logs
-      RetentionInDays: 30
-
-  IAMRoleECRBatchProd:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub "${ResourcePrefix}-${stage}-${Region}-Job-role"
+      RoleName: !Sub ${ResourcePrefix}-${Environment}-batch-service-role
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
-          - Effect: "Allow"
+          - Effect: Allow
             Principal:
-              Service:
-                - "ecs-tasks.amazonaws.com"
-                - "ec2.amazonaws.com"
-            Action: "sts:AssumeRole"
+              Service: batch.amazonaws.com
+            Action: sts:AssumeRole
       ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"  
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
-        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
-        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/AWSBatchFullAccess"
-        - "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-        - "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-batch-service-role
 
-  InstanceProfileECRBatchProd:
-    Type: "AWS::IAM::InstanceProfile"
+  # IAM Role for ECS Task Execution
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
     Properties:
-      InstanceProfileName: !Sub "${ResourcePrefix}-${stage}-${Region}-Job-instance-profile"
-      Roles:
-        - !Ref IAMRoleECRBatchProd
+      RoleName: !Sub ${ResourcePrefix}-${Environment}-ecs-task-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECRReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: '*'
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/batch/job/${ResourcePrefix}-${Environment}:*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-ecs-task-execution-role
 
+  # Fargate Compute Environment
+  FargateComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeEnvironmentName: !Sub ${ResourcePrefix}-${Environment}-fargate-compute-environment
+      Type: MANAGED
+      State: ENABLED
+      ComputeResources:
+        Type: FARGATE
+        MaxvCpus: !Ref MaxvCpus
+        Subnets: !Ref SubnetIds
+        SecurityGroupIds: !Ref SecurityGroupIds
+      ServiceRole: !GetAtt BatchServiceRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-fargate-compute-environment
+    DependsOn:
+      - BatchServiceRole
 
+  # Job Queue
+  FargateJobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: !Sub ${ResourcePrefix}-${Environment}-fargate-job-queue
+      State: ENABLED
+      Priority: 10
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref FargateComputeEnvironment
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-fargate-job-queue
+    DependsOn:
+      - FargateComputeEnvironment
 
-  #################################### research ########################################
-  ResearchJobDefinition:
+  # Job Definition for CountyOverview
+  CountyOverviewJobDefinition:
     Type: AWS::Batch::JobDefinition
     Properties:
+      JobDefinitionName: !Sub ${ResourcePrefix}-${Environment}-county-overview
       Type: container
-      JobDefinitionName: !Sub ${ResourcePrefix}-${stage}-research
+      PlatformCapabilities:
+        - FARGATE
       ContainerProperties:
-        Command:
-          - bash
-          - "/data/get_git_repo.sh"
-        Privileged: true
-        JobRoleArn: !GetAtt IAMRoleECRBatchProd.Arn
-        ExecutionRoleArn: !GetAtt IAMRoleECRBatchProd.Arn
+        Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-county-overview-${Environment}-ecr:${ImageTag}
+        FargatePlatformConfiguration:
+          PlatformVersion: LATEST
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
         ResourceRequirements:
-          - Type: MEMORY
-            Value: '70000'
           - Type: VCPU
-            Value: '36'
-        Image: !Sub $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-county-overview-${STAGE}-ecr:$IMAGE_TAG
+            Value: !Ref ContainerVcpus
+          - Type: MEMORY
+            Value: !Ref ContainerMemory
+        ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
         LogConfiguration:
-          LogDriver: 'awslogs'
+          LogDriver: awslogs
           Options:
-            awslogs-group: !Ref CountyLogGroup
-      
+            awslogs-group: !Sub /aws/batch/job/${ResourcePrefix}-${Environment}
+            awslogs-region: !Ref Region
+            awslogs-stream-prefix: county-overview
+      RetryStrategy:
+        Attempts: 3
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-county-overview-job-definition
+    DependsOn:
+      - ECSTaskExecutionRole
+      - LogGroup
 
-  ResearchComputeEnvironment:
-    Type: AWS::Batch::ComputeEnvironment
-    DependsOn: IAMRoleECRBatchProd
+  # Job Definition for PdfExtraction
+  PdfExtractionJobDefinition:
+    Type: AWS::Batch::JobDefinition
     Properties:
-      Type: MANAGED
-      ServiceRole: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
-      ComputeEnvironmentName: !Sub ${ResourcePrefix}-${stage}-${ResourcePrefix}-research
-      ComputeResources:
-        MaxvCpus: 288
-        SecurityGroupIds:
-          - !GetAtt CountySecurityGroup.GroupId 
-        Type: EC2
-        Subnets:
-          - !Ref SubnetID1
-          - !Ref SubnetID2
-          - !Ref SubnetID3
-        MinvCpus: 0
-        AllocationStrategy: BEST_FIT_PROGRESSIVE
-        InstanceRole: !Ref InstanceProfileECRBatchProd
-        InstanceTypes:
-          - c5.9xlarge
-      State: ENABLED
+      JobDefinitionName: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
+      Type: container
+      PlatformCapabilities:
+        - FARGATE
+      ContainerProperties:
+        Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-pdf-extraction-${Environment}-ecr:${ImageTag}
+        FargatePlatformConfiguration:
+          PlatformVersion: LATEST
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
+        ResourceRequirements:
+          - Type: VCPU
+            Value: !Ref ContainerVcpus
+          - Type: MEMORY
+            Value: !Ref ContainerMemory
+        ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group: !Sub /aws/batch/job/${ResourcePrefix}-${Environment}
+            awslogs-region: !Ref Region
+            awslogs-stream-prefix: pdf-extraction
+      RetryStrategy:
+        Attempts: 3
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-job-definition
+    DependsOn:
+      - ECSTaskExecutionRole
+      - LogGroup
+
+  # Job Definition for EquityFindings
+  EquityFindingsJobDefinition:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      JobDefinitionName: !Sub ${ResourcePrefix}-${Environment}-equity-findings
+      Type: container
+      PlatformCapabilities:
+        - FARGATE
+      ContainerProperties:
+        Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-equity-findings-${Environment}-ecr:${ImageTag}
+        FargatePlatformConfiguration:
+          PlatformVersion: LATEST
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
+        ResourceRequirements:
+          - Type: VCPU
+            Value: !Ref ContainerVcpus
+          - Type: MEMORY
+            Value: !Ref ContainerMemory
+        ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group: !Sub /aws/batch/job/${ResourcePrefix}-${Environment}
+            awslogs-region: !Ref Region
+            awslogs-stream-prefix: equity-findings
+      RetryStrategy:
+        Attempts: 3
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-equity-findings-job-definition
+    DependsOn:
+      - ECSTaskExecutionRole
+      - LogGroup
+
+  # CloudWatch Log Group for Job Logs
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/batch/job/${ResourcePrefix}-${Environment}
+      RetentionInDays: 7
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${Environment}-log-group
+
+Outputs:
+  ComputeEnvironmentArn:
+    Description: ARN of the Fargate Compute Environment
+    Value: !Ref FargateComputeEnvironment
+  JobQueueArn:
+    Description: ARN of the Job Queue
+    Value: !Ref FargateJobQueue
+  CountyOverviewJobDefinitionArn:
+    Description: ARN of the CountyOverview Job Definition
+    Value: !Ref CountyOverviewJobDefinition
+  PdfExtractionJobDefinitionArn:
+    Description: ARN of the PdfExtraction Job Definition
+    Value: !Ref PdfExtractionJobDefinition
+  EquityFindingsJobDefinitionArn:
+    Description: ARN of the EquityFindings Job Definition
+    Value: !Ref EquityFindingsJobDefinition
+  ExecutionRoleArn:
+    Description: ARN of the ECS Task Execution Role
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+  BatchServiceRoleArn:
+    Description: ARN of the Batch Service Role
+    Value: !GetAtt BatchServiceRole.Arn
+---

@@ -1,10 +1,8 @@
 version: 0.2
 
-
 phases:
   pre_build:
     commands:
-
       - echo Logging in to Amazon ECR...
       - ls
       - ls -lhrt
@@ -12,19 +10,34 @@ phases:
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
       - IMAGE_TAG=$(date +%Y%m%d%H%M%S)
       - echo $IMAGE_TAG
-      # - mkdir env
       - echo "IMAGE_TAG=$IMAGE_TAG" >> env/.env.$STAGE
       - cat env/.env.$STAGE
       - ls -lart env
   build:
     commands:
-      - echo Building Docker county...
-      - docker build -t ${PREFIX}-county-overview .
-      - docker tag ${PREFIX}-county-overview:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr:$IMAGE_TAG
+      # Build and tag Docker image for CountyOverview
+      - echo Building Docker image for CountyOverview...
+      - docker build -f Dockerfile.countyoverview -t ${PREFIX}-county-overview .
+      - docker tag ${PREFIX}-county-overview:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-county-overview-${ENVIRONMENT}-ecr:$IMAGE_TAG
+      # Build and tag Docker image for PdfExtraction
+      - echo Building Docker image for PdfExtraction...
+      - docker build -f Dockerfile.pdfextraction -t ${PREFIX}-pdf-extraction .
+      - docker tag ${PREFIX}-pdf-extraction:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-pdf-extraction-${ENVIRONMENT}-ecr:$IMAGE_TAG
+      # Build and tag Docker image for EquityFindings
+      - echo Building Docker image for EquityFindings...
+      - docker build -f Dockerfile.equityfindings -t ${PREFIX}-equity-findings .
+      - docker tag ${PREFIX}-equity-findings:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-equity-findings-${ENVIRONMENT}-ecr:$IMAGE_TAG
   post_build:
     commands:
-      - echo Pushing Docker county to Amazon ECR...
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/vivdiaa-county-overview-dev-ecr:$IMAGE_TAG
+      # Push Docker image for CountyOverview
+      - echo Pushing Docker image for CountyOverview to Amazon ECR...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-county-overview-${ENVIRONMENT}-ecr:$IMAGE_TAG
+      # Push Docker image for PdfExtraction
+      - echo Pushing Docker image for PdfExtraction to Amazon ECR...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-pdf-extraction-${ENVIRONMENT}-ecr:$IMAGE_TAG
+      # Push Docker image for EquityFindings
+      - echo Pushing Docker image for EquityFindings to Amazon ECR...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${PREFIX}-equity-findings-${ENVIRONMENT}-ecr:$IMAGE_TAG
 artifacts:
   files:
     - '**/*'
