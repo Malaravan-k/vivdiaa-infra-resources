@@ -55,8 +55,7 @@ Resources:
     Properties:
       BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-county-details
+        Name: !Sub ${ResourcePrefix}-${Environment}-county-details
 
   # IAM Role for AWS Batch Service
   BatchServiceRole:
@@ -73,8 +72,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-batch-service-role
+        Name: !Sub ${ResourcePrefix}-${Environment}-batch-service-role
 
   # IAM Role for ECS Task Execution
   ECSTaskExecutionRole:
@@ -122,8 +120,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-ecs-task-execution-role
+        Name: !Sub ${ResourcePrefix}-${Environment}-ecs-task-execution-role
 
   # Fargate Compute Environment
   FargateComputeEnvironment:
@@ -139,8 +136,7 @@ Resources:
         SecurityGroupIds: !Ref SecurityGroupIds
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-fargate-compute-environment
+        Name: !Sub ${ResourcePrefix}-${Environment}-fargate-compute-environment
     DependsOn:
       - BatchServiceRole
 
@@ -155,8 +151,7 @@ Resources:
         - Order: 1
           ComputeEnvironment: !Ref FargateComputeEnvironment
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-fargate-job-queue
+        Name: !Sub ${ResourcePrefix}-${Environment}-fargate-job-queue
     DependsOn:
       - FargateComputeEnvironment
 
@@ -192,8 +187,7 @@ Resources:
       RetryStrategy:
         Attempts: 3
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-county-overview-job-definition
+        Name: !Sub ${ResourcePrefix}-${Environment}-county-overview-job-definition
     DependsOn:
       - ECSTaskExecutionRole
       - LogGroup
@@ -230,8 +224,7 @@ Resources:
       RetryStrategy:
         Attempts: 3
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-job-definition
+        Name: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-job-definition
     DependsOn:
       - ECSTaskExecutionRole
       - LogGroup
@@ -268,8 +261,7 @@ Resources:
       RetryStrategy:
         Attempts: 3
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-equity-findings-job-definition
+        Name: !Sub ${ResourcePrefix}-${Environment}-equity-findings-job-definition
     DependsOn:
       - ECSTaskExecutionRole
       - LogGroup
@@ -281,8 +273,7 @@ Resources:
       LogGroupName: !Sub /aws/batch/job/${ResourcePrefix}-${Environment}
       RetentionInDays: 7
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-log-group
+        Name: !Sub ${ResourcePrefix}-${Environment}-log-group
 
   # IAM Role for Lambda Functions
   LambdaExecutionRole:
@@ -322,12 +313,11 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-lambda-execution-role
+        Name: !Sub ${ResourcePrefix}-${Environment}-lambda-execution-role
 
   # Lambda Function to Trigger CountyOverview Job (via EventBridge Schedule)
   CountyOverviewTriggerLambda:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ResourcePrefix}-${Environment}-county-overview-trigger-lambda
       Handler: county_overview_trigger.handler
@@ -341,8 +331,7 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-county-overview-trigger-lambda
+        Name: !Sub ${ResourcePrefix}-${Environment}-county-overview-trigger-lambda
 
   # EventBridge Rule to Trigger CountyOverview Lambda Daily at 19:00 UTC
   CountyOverviewScheduleRule:
@@ -396,7 +385,7 @@ Resources:
 
   # Lambda Function to Trigger PdfExtraction Job (via S3 Event)
   PdfExtractionTriggerLambda:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-trigger-lambda
       Handler: pdf_extraction_trigger.handler
@@ -410,8 +399,7 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-trigger-lambda
+        Name: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-trigger-lambda
 
   # Permission for S3 to Invoke PdfExtraction Lambda
   PdfExtractionTriggerLambdaPermission:
@@ -424,7 +412,7 @@ Resources:
 
   # Lambda Function to Trigger EquityFindings Job (via S3 Event)
   EquityFindingsTriggerLambda:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ResourcePrefix}-${Environment}-equity-findings-trigger-lambda
       Handler: equity_findings_trigger.handler
@@ -438,8 +426,7 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
       Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${Environment}-equity-findings-trigger-lambda
+        Name: !Sub ${ResourcePrefix}-${Environment}-equity-findings-trigger-lambda
 
   # Permission for S3 to Invoke EquityFindings Lambda
   EquityFindingsTriggerLambdaPermission:
