@@ -359,7 +359,7 @@ Resources:
                     Value: logs/
                   - Name: suffix
                     Value: .log
-            Lambda: !GetAtt PdfExtractionTriggerLambda.Arn
+            Function: !GetAtt PdfExtractionTriggerLambda.Arn
           - Event: s3:ObjectCreated:Put
             Filter:
               S3Key:
@@ -368,7 +368,7 @@ Resources:
                     Value: pdf_extraction_logs/
                   - Name: suffix
                     Value: .log
-            Lambda: !GetAtt EquityFindingsTriggerLambda.Arn
+            Function: !GetAtt EquityFindingsTriggerLambda.Arn
 
   # Lambda Function to Trigger PdfExtraction Job (via S3 Event)
   PdfExtractionTriggerLambda:
