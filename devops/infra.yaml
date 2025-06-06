@@ -1,6 +1,6 @@
-
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS CloudFormation template for AWS Batch with Fargate, EventBridge schedule, specific S3 event notifications, and job definitions with commands.
+Transform: AWS::Serverless-2016-10-31
+Description: AWS SAM template for AWS Batch with Fargate, EventBridge schedule, specific S3 event notifications, and job definitions with commands.
 
 Parameters:
   Environment:
