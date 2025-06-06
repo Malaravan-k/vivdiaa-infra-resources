@@ -50,10 +50,10 @@ Parameters:
 
 Resources:
   # S3 Bucket for County Details Logs
-  CountyDetailsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
+  # CountyDetailsBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
 
 
   # IAM Role for AWS Batch Service
@@ -442,9 +442,6 @@ Outputs:
   BatchServiceRoleArn:
     Description: ARN of the Batch Service Role
     Value: !GetAtt BatchServiceRole.Arn
-  CountyDetailsBucketName:
-    Description: Name of the County Details S3 Bucket
-    Value: !Ref CountyDetailsBucket
   CountyOverviewTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers CountyOverview job
     Value: !GetAtt CountyOverviewTriggerLambda.Arn
