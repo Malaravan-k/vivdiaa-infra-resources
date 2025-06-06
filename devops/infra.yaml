@@ -347,6 +347,7 @@ Resources:
     DependsOn:
       - PdfExtractionTriggerLambdaPermission
       - EquityFindingsTriggerLambdaPermission
+      - DirectSkiptraceTriggerLambdaPermission
     Properties:
       BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
       NotificationConfiguration:
@@ -360,7 +361,78 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt PdfExtractionTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Post
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt PdfExtractionTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt PdfExtractionTriggerLambda.Arn
+
           - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: equity_finding_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt DirectSkiptraceTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Post
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: equity_finding_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt DirectSkiptraceTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: equity_finding_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt DirectSkiptraceTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: pdf_extraction_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt EquityFindingsTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Post
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: pdf_extraction_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt EquityFindingsTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
             Filter:
               S3Key:
                 Rules:
@@ -420,6 +492,28 @@ Resources:
       Principal: s3.amazonaws.com
       SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
 
+  # Lambda Function to Trigger DirectSkiptrace Job (via S3 Event)
+  DirectSkiptraceTriggerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${ResourcePrefix}-${Environment}-direct-skiptrace-trigger-lambda
+      Handler: direct_skiptrace_trigger.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      CodeUri: ../src/
+      
+
+  # Permission for S3 to Invoke DirectSkiptrace Lambda
+  DirectSkiptraceTriggerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DirectSkiptraceTriggerLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+
+
 Outputs:
   ComputeEnvironmentArn:
     Description: ARN of the Fargate Compute Environment
@@ -451,3 +545,6 @@ Outputs:
   EquityFindingsTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers EquityFindings job
     Value: !GetAtt EquityFindingsTriggerLambda.Arn
+  DirectSkiptraceTriggerLambdaArn:
+    Description: ARN of the Lambda function that triggers DirectSkiptrace job
+    Value: !GetAtt DirectSkiptraceTriggerLambda.Arn
