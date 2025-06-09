@@ -1,15 +1,33 @@
-def handler(event, context):
-    """
-    This function is triggered by an event to process equity findings.
-    It retrieves the equity findings from the event and processes them.
-    """
-    # Extract equity findings from the event
-    equity_findings = event.get('equity_findings', [])
-    
-    if not equity_findings:
-        print("No equity findings to process.")
-        return
-    
-    # Process each equity finding
-    for finding in equity_findings:
-        process_equity_finding(finding)
+import boto3
+import os
+
+# Initialize AWS Batch client
+batch_client = boto3.client("batch")
+
+# Environment variables for Batch Job configuration
+JOB_DEFINITION = os.getenv("JOB_DEFINITION", "vivid-dev-case-overview-definition")
+JOB_QUEUE = os.getenv("JOB_QUEUE","vivid-dev-case-overview-queue")
+JOB_NAME = os.getenv("JOB_NAME", "Caseoverview_Batch_Job")
+
+def lambda_handler(event, context):
+    try:
+        response = batch_client.submit_job(
+            jobName=JOB_NAME,
+            jobQueue=JOB_QUEUE,
+            jobDefinition=JOB_DEFINITION,
+        )
+        
+        print(f"Batch Job Submitted Successfully: {response['jobId']}")
+        return {
+            "statusCode": 200,
+            "body": f"Batch Job {response['jobId']} submitted successfully!"
+        }
+    except Exception as e:
+        print(f"Error submitting Batch Job: {str(e)}")
+        return {
+            "statusCode": 500,
+            "body": f"Error: {str(e)}"
+        }
+
+
+

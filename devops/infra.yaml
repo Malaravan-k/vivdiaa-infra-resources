@@ -114,10 +114,17 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details/*
+        - PolicyName: SecretsManagerAccess  # New policy for Secrets Manager access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
-
+      
   # Fargate Compute Environment
   FargateComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
@@ -502,6 +509,7 @@ Resources:
       Runtime: python3.9
       Timeout: 60
       CodeUri: ../src/
+      
       
 
   # Permission for S3 to Invoke DirectSkiptrace Lambda

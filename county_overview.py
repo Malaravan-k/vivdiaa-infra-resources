@@ -38,7 +38,7 @@ s3_client = boto3.client("s3")
 
 APP_CLIENT_ID = os.getenv("APP_CLIENT_ID", "f052f213-a46f-4e3c-8cbe-2c4f6025d23f")
 TOKEN_SCOPE = os.getenv("TOKEN_SCOPE", "api://prd-rpa-web-services.nclea.gov/User.ReadAccess")
-BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county")
+BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county-details")
 BASE_URL = os.getenv("BASE_URL", "https://prdaws.nccourts.org/rpa_web_services/api/v1/partycases/")
 CASE_CATEGORY = "CV"
 CASE_TYPES = ["CVFCV", "CVFM", "FORSP"]
