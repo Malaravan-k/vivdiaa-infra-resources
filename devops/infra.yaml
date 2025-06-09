@@ -134,6 +134,7 @@ Resources:
       ServiceRole: arn:aws:iam::491085409841:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
 
 
+
   # Job Queue
   FargateJobQueue:
     Type: AWS::Batch::JobQueue
@@ -533,9 +534,9 @@ Outputs:
   ExecutionRoleArn:
     Description: ARN of the ECS Task Execution Role
     Value: !GetAtt ECSTaskExecutionRole.Arn
-  BatchServiceRoleArn:
-    Description: ARN of the Batch Service Role
-    Value: !GetAtt BatchServiceRole.Arn
+  # BatchServiceRoleArn:
+  #   Description: ARN of the Batch Service Role
+  #   Value: !GetAtt BatchServiceRole.Arn
   CountyOverviewTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers CountyOverview job
     Value: !GetAtt CountyOverviewTriggerLambda.Arn
