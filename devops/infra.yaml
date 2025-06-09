@@ -57,11 +57,11 @@ Resources:
 
 
 # Service-Linked Role for AWS Batch
-  BatchServiceRole:
-    Type: AWS::IAM::ServiceLinkedRole
-    Properties:
-      AWSServiceName: batch.amazonaws.com
-      Description: Service-linked role for AWS Batch
+  # BatchServiceRole:
+  #   Type: AWS::IAM::ServiceLinkedRole
+  #   Properties:
+  #     AWSServiceName: batch.amazonaws.com
+  #     Description: Service-linked role for AWS Batch
       # RoleName is not needed for service-linked roles as AWS defines it (AWSServiceRoleForBatch)
       # Tags are optional but included for consistency with your template
       
@@ -131,7 +131,7 @@ Resources:
         MaxvCpus: !Ref MaxvCpus
         Subnets: !Ref SubnetIds
         SecurityGroupIds: !Ref SecurityGroupIds
-      ServiceRole: !GetAtt BatchServiceRole.Arn
+      ServiceRole: arn:aws:iam::491085409841:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
 
     DependsOn:
       - BatchServiceRole
