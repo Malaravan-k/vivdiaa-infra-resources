@@ -133,8 +133,6 @@ Resources:
         SecurityGroupIds: !Ref SecurityGroupIds
       ServiceRole: arn:aws:iam::491085409841:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
 
-    DependsOn:
-      - BatchServiceRole
 
   # Job Queue
   FargateJobQueue:
