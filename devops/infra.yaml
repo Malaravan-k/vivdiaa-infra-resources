@@ -57,11 +57,11 @@ Resources:
 
 
 # Service-Linked Role for AWS Batch
-  BatchServiceRole:
-    Type: AWS::IAM::ServiceLinkedRole
-    Properties:
-      AWSServiceName: batch.amazonaws.com
-      Description: Service-linked role for AWS Batch
+  # BatchServiceRole:
+  #   Type: AWS::IAM::ServiceLinkedRole
+  #   Properties:
+  #     AWSServiceName: batch.amazonaws.com
+  #     Description: Service-linked role for AWS Batch
       # RoleName is not needed for service-linked roles as AWS defines it (AWSServiceRoleForBatch)
       # Tags are optional but included for consistency with your template
       
@@ -131,10 +131,10 @@ Resources:
         MaxvCpus: !Ref MaxvCpus
         Subnets: !Ref SubnetIds
         SecurityGroupIds: !Ref SecurityGroupIds
-      ServiceRole: !GetAtt BatchServiceRole.Arn
+    #   ServiceRole: !GetAtt BatchServiceRole.Arn
 
-    DependsOn:
-      - BatchServiceRole
+    # DependsOn:
+    #   - BatchServiceRole
 
   # Job Queue
   FargateJobQueue:
@@ -535,9 +535,9 @@ Outputs:
   ExecutionRoleArn:
     Description: ARN of the ECS Task Execution Role
     Value: !GetAtt ECSTaskExecutionRole.Arn
-  BatchServiceRoleArn:
-    Description: ARN of the Batch Service Role
-    Value: !GetAtt BatchServiceRole.Arn
+  # BatchServiceRoleArn:
+  #   Description: ARN of the Batch Service Role
+  #   Value: !GetAtt BatchServiceRole.Arn
   CountyOverviewTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers CountyOverview job
     Value: !GetAtt CountyOverviewTriggerLambda.Arn
