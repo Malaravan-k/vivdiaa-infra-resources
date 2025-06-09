@@ -56,21 +56,15 @@ Resources:
   #     BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
 
 
-  # IAM Role for AWS Batch Service
+# Service-Linked Role for AWS Batch
   BatchServiceRole:
-    Type: AWS::IAM::Role
+    Type: AWS::IAM::ServiceLinkedRole
     Properties:
-      RoleName: !Sub ${ResourcePrefix}-${Environment}-batch-service-role
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: batch.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
-
+      AWSServiceName: batch.amazonaws.com
+      Description: Service-linked role for AWS Batch
+      # RoleName is not needed for service-linked roles as AWS defines it (AWSServiceRoleForBatch)
+      # Tags are optional but included for consistency with your template
+      
   # IAM Role for ECS Task Execution
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
