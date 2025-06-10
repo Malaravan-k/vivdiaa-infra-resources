@@ -123,7 +123,7 @@ Resources:
   FargateComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
-      ComputeEnvironmentName: !Sub ${ResourcePrefix}-${Environment}-fargate-compute-environment
+      ComputeEnvironmentName: !Sub ${ResourcePrefix}-${Environment}-batch-compute-environment
       Type: MANAGED
       State: ENABLED
       ComputeResources:
