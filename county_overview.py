@@ -38,18 +38,21 @@ s3_client = boto3.client("s3")
 
 APP_CLIENT_ID = os.getenv("APP_CLIENT_ID", "f052f213-a46f-4e3c-8cbe-2c4f6025d23f")
 TOKEN_SCOPE = os.getenv("TOKEN_SCOPE", "api://prd-rpa-web-services.nclea.gov/User.ReadAccess")
-BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county-details")
+BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county")
 BASE_URL = os.getenv("BASE_URL", "https://prdaws.nccourts.org/rpa_web_services/api/v1/partycases/")
 CASE_CATEGORY = "CV"
 CASE_TYPES = ["CVFCV", "CVFM", "FORSP"]
 ALLOWED_CASE_PREFIXES = {"CV", "SP", "M"}
-EXCLUDE_FORSP_COUNTIES = {"Mecklenburg County", "Wake County", "Cabarrus County"}
+# EXCLUDE_FORSP_COUNTIES = {"Mecklenburg County", "Wake County", "Cabarrus County"}
+INCLUDE_FORSP_COUNTIES = {"Mecklenburg County", "Union County", "Cabarrus County"}
+
 secret_Arn = "arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod"
 # Default dates: end date is today, start date is yesterday
 default_end_date = date.today()
 default_start_date = default_end_date - timedelta(days=1)
 start_date_str = os.getenv("START_DATE", default_start_date.strftime("%m/%d/%Y"))
 end_date_str = os.getenv("END_DATE", default_end_date.strftime("%m/%d/%Y"))
+
 
 def fetch_cases_by_date_range(county, odyssey, county_node_ids, bearer_token, start_date, end_date, session):
     """Fetch cases for a given county using date range and countyNodeIDs."""
@@ -63,7 +66,8 @@ def fetch_cases_by_date_range(county, odyssey, county_node_ids, bearer_token, st
             "caseFiledStartDate": start_date.strftime("%m/%d/%Y"),
             "caseFiledEndDate": end_date.strftime("%m/%d/%Y")
         }
-        case_types = [ct for ct in CASE_TYPES if ct != "FORSP"] if county in EXCLUDE_FORSP_COUNTIES else CASE_TYPES
+        # case_types = [ct for ct in CASE_TYPES if ct != "FORSP"] if county in EXCLUDE_FORSP_COUNTIES else CASE_TYPES
+        case_types = CASE_TYPES if county in INCLUDE_FORSP_COUNTIES else [ct for ct in CASE_TYPES if ct != "FORSP"]
         logger.info(f"Using case types {case_types} for {county}")
         params["caseType"] = case_types
         params["countyNodeID"] = county_node_ids
@@ -315,7 +319,7 @@ def upload_to_s3(data, county, odyssey, start_date, end_date, session):
 
         try:
             save_cases_to_rds(data, session)
-            logger.info(f"Cases for {county} successfully saved as table")
+            # logger.info(f"Cases for {county} successfully saved as table")
         except Exception as rds_err:
             logger.error(f"Failed to save cases for {county} as table in RDS: {str(rds_err)}")
             raise

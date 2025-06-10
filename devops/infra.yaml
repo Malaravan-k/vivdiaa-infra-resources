@@ -128,7 +128,7 @@ Resources:
       State: ENABLED
       ComputeResources:
         Type: FARGATE
-        MaxvCpus: !Ref MaxvCpus
+        MaxvCpus: !Ref 'MaxvCpus'
         Subnets: !Ref SubnetIds
         SecurityGroupIds: !Ref SecurityGroupIds
       ServiceRole: arn:aws:iam::491085409841:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
