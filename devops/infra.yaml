@@ -127,7 +127,7 @@ Resources:
       Type: MANAGED
       State: ENABLED
       ComputeResources:
-        Type: FARGATE
+        Type: FARGATE_SPOT
         MaxvCpus: !Ref 'MaxvCpus'
         Subnets: !Ref SubnetIds
         SecurityGroupIds: !Ref SecurityGroupIds
