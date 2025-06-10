@@ -32,11 +32,7 @@ from pydantic import BaseModel, Field
 from typing import List
 from logger_config import setup_logger
 
-# OPENAI_API_KEY = "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"
- 
-API_KEY = "53a08fca115ac3d5558e67a0a3f20e9c"
 SITE_URL = "https://portal-nc.tylertech.cloud/Portal/Home/Dashboard/29"
-CAPTCHA_SITE_KEY = "6LfqmHkUAAAAAAKhHRHuxUy6LOMRZSG2LvSwWPO9"
 BUCKET_NAME = "vivid-dev-county"
 
 # Database Configuration
@@ -59,13 +55,17 @@ RECIPIENT_EMAIL = "vigneshkumar@meyicloud.com"  # Replace with desired recipient
 # END_INDEX =int(os.getenv("CASE_END_INDEX"))
 
 # Keywords to match against
-FILE_KEYWORDS = [
+SP_FILE_KEYWORDS = [
     "affidavit of service", "service affidavit","note", "promissory note","aos",
     "foreclosure notice of hearing","notice of hearing", "notice of foreclosure sale", "nos",
     "notice of foreclosure","noh","deed of trust", "trust deed",
     "guardian ad litem", "gal",
     "lien","statement of account","soa","notice of sale","service aff","loan","loan mod","loan modification",
-    "return of service","service returns","complaint","lis pendens", "lp","legacy complete case scan",
+    "return of service","service returns"
+]
+
+CV_FILE_KEYWORDS = [
+    "complaint","lis pendens", "lp"
 ]
 
 logger, LOG_FILE = setup_logger()
@@ -84,7 +84,7 @@ def solve_captcha():
     try:
         
         response = requests.get(
-            f"http://2captcha.com/in.php?key={API_KEY}&method=userrecaptcha&googlekey={CAPTCHA_SITE_KEY}&pageurl={SITE_URL}&json=1"
+            f"http://2captcha.com/in.php?key={CAPTCHA_API_KEY}&method=userrecaptcha&googlekey={CAPTCHA_SITE_KEY}&pageurl={SITE_URL}&json=1"
         )
         captcha_request = response.json()
     
@@ -97,7 +97,7 @@ def solve_captcha():
     
         for _ in range(50):
             time.sleep(3)
-            solution_response = requests.get(f"http://2captcha.com/res.php?key={API_KEY}&action=get&id={request_id}&json=1")
+            solution_response = requests.get(f"http://2captcha.com/res.php?key={CAPTCHA_API_KEY}&action=get&id={request_id}&json=1")
             solution_data = solution_response.json()
         
             if solution_data.get("status") == 1:
@@ -588,12 +588,12 @@ def filter_documents(events,case_number):
     if case_number[2:4] == "SP":
         matched_docs = [
             doc for doc in events
-            if any(normalize(keyword) in normalize(doc['documentName'][0]) for keyword in FILE_KEYWORDS if doc.get('documentName') and doc['documentName'][0] is not None)
+            if any(normalize(keyword) in normalize(doc['documentName'][0]) for keyword in SP_FILE_KEYWORDS if doc.get('documentName') and doc['documentName'][0] is not None)
         ]
     if case_number[2:4] in ["CV","M0"]:
         matched_docs = [
             doc for doc in events
-            if any(normalize(keyword) in normalize(doc['documentName'][0]) for keyword in FILE_KEYWORDS if doc.get('documentName') and doc['documentName'][0] is not None)
+            if any(normalize(keyword) in normalize(doc['documentName'][0]) for keyword in SP_FILE_KEYWORDS if doc.get('documentName') and doc['documentName'][0] is not None)
         ]
     # Sort by date (latest first)
     sorted_docs = sorted(
@@ -623,7 +623,6 @@ def extract_data():
         Column("case_number", String, primary_key=True),
         Column("parse_failed",Boolean),
         Column("last_updated_at",Date),
-        Column("parse_failed_reason",String),
         autoload_with=engine
     )
 
@@ -791,7 +790,7 @@ def extract_data():
                     Failed_cases.append({"case_number":case_number,"error":str(e)})
                     try:
                         update_stmt = update(case_intake).where(
-                            case_intake.c.case_number == case_number).values(parse_failed=True,last_updated_at = datetime.now(),parse_failed_reason = str(e))
+                            case_intake.c.case_number == case_number).values(parse_failed=True,last_updated_at = datetime.now())
                         with engine.connect() as conn:
                             conn.execute(update_stmt)
                             conn.commit()
@@ -995,14 +994,14 @@ def insert_final_result(engine, final_results, case_number):
             tax_manual_review = True
             tax_manual_review_reason = 'AMOUNT OWED IS EMPTY'
         else:
-            tax_manual_review = False
+            tax_manual_review = ''
             tax_manual_review_reason = ''
 
         if not result_property_info.get("Property_address") and not parcel_no:
             property_manual_review = True
             prop_manual_review_reason = 'EMPTY PROPERTY ADDRESS AND PARCEL NO'
         else:
-            property_manual_review = False
+            property_manual_review = ''
             prop_manual_review_reason = ''
         # Generate UUIDs
         tax_id = uuid.uuid4()
@@ -1093,19 +1092,19 @@ def insert_final_result(engine, final_results, case_number):
         return True,"[DATA UPDATED SUCCESSFULLY IN DB!]"
     except Exception as e:
         logger.error(f"\n[UPDATION FAILED] for this case number {case_number} \n Error inserting data: {e}")
-        # # If it's a ValueError, update the parse_failed flag in the database
-        # if isinstance(e, ValueError):
-        #     try:
+        # If it's a ValueError, update the parse_failed flag in the database
+        if isinstance(e, ValueError):
+            try:
                 
-        #         update_stmt = update(case_intake).where(
-        #             case_intake.c.case_number == case_number).values(parse_failed=True,last_updated_at = datetime.now())
-        #         with engine.connect() as conn:
-        #             conn.execute(update_stmt)
-        #             conn.commit()
-        #             logger.info(f"'parse_failed' updated to True in DB for {case_number}")
-        #     except Exception as db_err:
-        #         logger.error(f"Failed to update 'parse_failed' in DB for {case_number}: {db_err}")
-        return False,"DB UPDATE FAILED"
+                update_stmt = update(case_intake).where(
+                    case_intake.c.case_number == case_number).values(parse_failed=True,last_updated_at = datetime.now())
+                with engine.connect() as conn:
+                    conn.execute(update_stmt)
+                    conn.commit()
+                    logger.info(f"'parse_failed' updated to True in DB for {case_number}")
+            except Exception as db_err:
+                logger.error(f"Failed to update 'parse_failed' in DB for {case_number}: {db_err}")
+        return False,e
 
 def send_email_notification(failed_cases):
     """
@@ -1200,3 +1199,7 @@ if __name__ == "__main__":
     finally:
         #Storing logs
         store_logs(LOG_FILE)
+
+
+    
+    
