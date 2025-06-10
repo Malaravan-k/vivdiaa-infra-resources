@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field
 from typing import List
 from logger_config import setup_logger
 
-OPENAI_API_KEY = "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"
+# OPENAI_API_KEY = "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"
  
 API_KEY = "53a08fca115ac3d5558e67a0a3f20e9c"
 SITE_URL = "https://portal-nc.tylertech.cloud/Portal/Home/Dashboard/29"
