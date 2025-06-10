@@ -20,7 +20,7 @@ EMAIL = os.getenv("EMAIL", "vivdiaa.svc@nclea.gov")
 BASE_URL = os.getenv("BASE_URL", "https://prdaws.nccourts.org/rpa_web_services/api/v1/partycases/")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county-details")
 
-def lambda_handler(event, context):
+def handler(event, context):
     try:
         response = batch_client.submit_job(
             jobName=JOB_NAME,
