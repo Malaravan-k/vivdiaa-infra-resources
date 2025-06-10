@@ -172,6 +172,7 @@ Resources:
           - Type: MEMORY
             Value: !Ref ContainerMemory
         ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+        JobRoleArn: !GetAtt ECSTaskExecutionRole.Arn
         LogConfiguration:
           LogDriver: awslogs
           Options:
@@ -208,6 +209,7 @@ Resources:
           - Type: MEMORY
             Value: !Ref ContainerMemory
         ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+        JobRoleArn: !GetAtt ECSTaskExecutionRole.Arn
         LogConfiguration:
           LogDriver: awslogs
           Options:
@@ -244,6 +246,7 @@ Resources:
           - Type: MEMORY
             Value: !Ref ContainerMemory
         ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+        JobRoleArn: !GetAtt ECSTaskExecutionRole.Arn
         LogConfiguration:
           LogDriver: awslogs
           Options:
