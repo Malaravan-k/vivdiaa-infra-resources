@@ -32,6 +32,33 @@ from pydantic import BaseModel, Field
 from typing import List
 from logger_config import setup_logger
 
+secrets_manager_session = boto3.client("secretsmanager", region_name="us-east-1")
+SECRET_ARN = os.environ.get('SECRET_ARN', '') 
+
+def get_secret_data(secret_arn):
+    try:
+        response = secrets_manager_session.get_secret_value(SecretId=secret_arn)
+        return json.loads(response['SecretString'])  # Parse JSON string into dict
+    except Exception as e:
+        print(f"Error retrieving secret: {e}")
+        return None
+
+def load_api_keys(secret_arn):
+    try:
+        secrets = get_secret_data(secret_arn)
+        if not secrets:
+            return None, None, None
+        
+        openai_api_key = secrets.get("OPENAI_API_KEY", "")
+        api_key = secrets.get("CAPTCHA_API_KEY", "")
+        captcha_site_key = secrets.get("CAPTCHA_SITE_KEY", "")
+        
+        return openai_api_key, api_key, captcha_site_key
+
+    except Exception as e:
+        print(f"Error in load_api_keys: {e}")
+        return None, None, None
+
 OPENAI_API_KEY = "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"
  
 API_KEY = "53a08fca115ac3d5558e67a0a3f20e9c"
