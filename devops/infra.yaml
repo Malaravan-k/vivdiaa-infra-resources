@@ -118,7 +118,7 @@ Resources:
                 Resource: arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      
+       
   # Fargate Compute Environment
   FargateComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
