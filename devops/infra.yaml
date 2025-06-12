@@ -97,23 +97,23 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: '*'
+                Resource: !Sub arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/batch/job/${ResourcePrefix}-${Environment}:*
         - PolicyName: S3WriteAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - s3: '*'
+                  - s3:*
                 Resource: '*'
-        - PolicyName: SecretsManagerAccess  # New policy for Secrets Manager access
+        - PolicyName: SecretsManagerAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: '*'
+                Resource: arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
        
