@@ -7,7 +7,7 @@ batch_client = boto3.client("batch")
 # Environment variables for Batch Job configuration
 JOB_DEFINITION = os.getenv("JOB_DEFINITION", "vivid-dev-case-overview-definition")
 JOB_QUEUE = os.getenv("JOB_QUEUE","vivid-dev-case-overview-queue")
-JOB_NAME = os.getenv("JOB_NAME", "Caseoverview_Batch_Job")
+JOB_NAME = os.getenv("JOB_NAME", "")
 
 def handler(event, context):
     try:

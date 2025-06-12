@@ -33,7 +33,7 @@ from typing import List
 from logger_config import setup_logger
 
 secrets_manager_session = boto3.client("secretsmanager", region_name="us-east-1")
-SECRET_ARN = os.environ.get('SECRET_ARN', '') 
+secret_arn = os.environ.get('SECRET_ARN', 'arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod') 
 
 def get_secret_data(secret_arn):
     try:
@@ -59,11 +59,6 @@ def load_api_keys(secret_arn):
         print(f"Error in load_api_keys: {e}")
         return None, None, None
 
-OPENAI_API_KEY = "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"
- 
-API_KEY = "53a08fca115ac3d5558e67a0a3f20e9c"
-SITE_URL = "https://portal-nc.tylertech.cloud/Portal/Home/Dashboard/29"
-CAPTCHA_SITE_KEY = "6LfqmHkUAAAAAAKhHRHuxUy6LOMRZSG2LvSwWPO9"
 BUCKET_NAME = "vivid-dev-county"
 
 # Database Configuration

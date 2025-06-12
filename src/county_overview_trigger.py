@@ -8,7 +8,7 @@ batch_client = boto3.client("batch", region_name=AWS_REGION)
 # Environment variables for Batch Job configuration
 JOB_DEFINITION = os.getenv("JOB_DEFINITION", "vivid-dev-case-overview-definition")
 JOB_QUEUE = os.getenv("JOB_QUEUE", "vivid-dev-case-overview-queue")
-JOB_NAME = os.getenv("JOB_NAME", "Caseoverview_Batch_Job")
+JOB_NAME = os.getenv("JOB_NAME", "")
 
 # Additional environment variables for application configuration
 PASSWORD = os.getenv("PASSWORD", "ai1!e#TvNL*z#KGY7kwLrd)&")

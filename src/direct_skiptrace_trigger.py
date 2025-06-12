@@ -27,7 +27,7 @@ DIRECTSKIP_API_URL = os.getenv("DIRECTSKIP_API_URL", "https://api0.directskip.co
 API_KEY = os.getenv('API_KEY', "")
  
 # S3 configuration
-S3_BUCKET = os.getenv('S3_BUCKET', "")
+S3_BUCKET = "vivid-dev-county-details"
 S3_FOLDER = os.getenv('S3_FOLDER', "")
  
 # Configure base logging to stdout for CloudWatch

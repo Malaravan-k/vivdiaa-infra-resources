@@ -319,6 +319,7 @@ Resources:
         Variables:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
+          JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
       
 
   # EventBridge Rule to Trigger CountyOverview Lambda Daily at 19:00 UTC
@@ -457,6 +458,7 @@ Resources:
         Variables:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
+          JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
 
 
   # Permission for S3 to Invoke PdfExtraction Lambda
@@ -482,6 +484,7 @@ Resources:
         Variables:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
+          JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
 
 
   # Permission for S3 to Invoke EquityFindings Lambda
