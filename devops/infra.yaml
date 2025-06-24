@@ -351,6 +351,8 @@ Resources:
       - PdfExtractionTriggerLambdaPermission
       - EquityFindingsTriggerLambdaPermission
       - DirectSkiptraceTriggerLambdaPermission
+      - RdsToAirtablePushTriggerLambdaPermission
+      - RdsToAirtablePushPhoneNumberTriggerLambdaPermission
     Properties:
       BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
       NotificationConfiguration:
