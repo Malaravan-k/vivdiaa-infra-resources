@@ -49,22 +49,6 @@ Parameters:
     Description: Tag for the ECR images (e.g., 202506021515 or latest)
 
 Resources:
-  # S3 Bucket for County Details Logs
-  # CountyDetailsBucket:
-  #   Type: AWS::S3::Bucket
-  #   Properties:
-  #     BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
-
-
-# Service-Linked Role for AWS Batch
-  # BatchServiceRole:
-  #   Type: AWS::IAM::ServiceLinkedRole
-  #   Properties:
-  #     AWSServiceName: batch.amazonaws.com
-  #     Description: Service-linked role for AWS Batch
-      # RoleName is not needed for service-linked roles as AWS defines it (AWSServiceRoleForBatch)
-      # Tags are optional but included for consistency with your template
-      
   # IAM Role for ECS Task Execution
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -116,7 +100,7 @@ Resources:
                 Resource: arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-       
+      
   # Fargate Compute Environment
   FargateComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
@@ -131,8 +115,6 @@ Resources:
         SecurityGroupIds: !Ref SecurityGroupIds
       ServiceRole: arn:aws:iam::491085409841:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch
 
-
-
   # Job Queue
   FargateJobQueue:
     Type: AWS::Batch::JobQueue
@@ -143,7 +125,6 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref FargateComputeEnvironment
-
     DependsOn:
       - FargateComputeEnvironment
 
@@ -179,7 +160,6 @@ Resources:
             awslogs-stream-prefix: county-overview
       RetryStrategy:
         Attempts: 3
-
     DependsOn:
       - ECSTaskExecutionRole
       - LogGroup
@@ -216,7 +196,6 @@ Resources:
             awslogs-stream-prefix: pdf-extraction
       RetryStrategy:
         Attempts: 3
-
     DependsOn:
       - ECSTaskExecutionRole
       - LogGroup
@@ -253,7 +232,6 @@ Resources:
             awslogs-stream-prefix: equity-findings
       RetryStrategy:
         Attempts: 3
-
     DependsOn:
       - ECSTaskExecutionRole
       - LogGroup
@@ -264,7 +242,6 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/batch/job/${ResourcePrefix}-${Environment}
       RetentionInDays: 7
-
 
   # IAM Role for Lambda Functions
   LambdaExecutionRole:
@@ -304,7 +281,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-
   # Lambda Function to Trigger CountyOverview Job (via EventBridge Schedule)
   CountyOverviewTriggerLambda:
     Type: AWS::Serverless::Function
@@ -321,7 +297,6 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
-      
 
   # EventBridge Rule to Trigger CountyOverview Lambda Daily at 19:00 UTC
   CountyOverviewScheduleRule:
@@ -347,12 +322,6 @@ Resources:
   # S3 Bucket with Combined Event Notifications for PdfExtraction and EquityFindings Triggers
   CountyDetailsBucketWithNotifications:
     Type: AWS::S3::Bucket
-    DependsOn:
-      - PdfExtractionTriggerLambdaPermission
-      - EquityFindingsTriggerLambdaPermission
-      - DirectSkiptraceTriggerLambdaPermission
-      - RdsToAirtablePushTriggerLambdaPermission
-      - RdsToAirtablePushPhoneNumberTriggerLambdaPermission
     Properties:
       BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
       NotificationConfiguration:
@@ -366,7 +335,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt PdfExtractionTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Post
             Filter:
               S3Key:
@@ -376,7 +344,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt PdfExtractionTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:CompleteMultipartUpload
             Filter:
               S3Key:
@@ -386,7 +353,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt PdfExtractionTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Put
             Filter:
               S3Key:
@@ -396,7 +362,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt DirectSkiptraceTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Post
             Filter:
               S3Key:
@@ -406,7 +371,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt DirectSkiptraceTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:CompleteMultipartUpload
             Filter:
               S3Key:
@@ -416,7 +380,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt DirectSkiptraceTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Put
             Filter:
               S3Key:
@@ -426,17 +389,15 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Post
-            Filter: 
+            Filter:
               S3Key:
                 Rules:
                   - Name: prefix
                     Value: equity_finding_logs/
                   - Name: suffix
-                    Value: .log 
+                    Value: .log
             Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:CompleteMultipartUpload
             Filter:
               S3Key:
@@ -446,7 +407,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Put
             Filter:
               S3Key:
@@ -456,7 +416,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
-          
           - Event: s3:ObjectCreated:Post
             Filter:
               S3Key:
@@ -466,7 +425,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:CompleteMultipartUpload
             Filter:
               S3Key:
@@ -476,7 +434,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Put
             Filter:
               S3Key:
@@ -486,7 +443,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt EquityFindingsTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:Post
             Filter:
               S3Key:
@@ -496,7 +452,6 @@ Resources:
                   - Name: suffix
                     Value: .log
             Function: !GetAtt EquityFindingsTriggerLambda.Arn
-
           - Event: s3:ObjectCreated:CompleteMultipartUpload
             Filter:
               S3Key:
@@ -511,7 +466,7 @@ Resources:
   AppLayers:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: !Join ['-', [!Ref ResourcePrefix, !Ref Environment,dependencies_layer]]
+      LayerName: !Join ['-', [!Ref ResourcePrefix, !Ref Environment, 'dependencies_layer']]
       Description: Utilities for vivid Batch api
       ContentUri: ../layer/
       CompatibleRuntimes:
@@ -539,7 +494,6 @@ Resources:
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
 
-
   # Permission for S3 to Invoke PdfExtraction Lambda
   PdfExtractionTriggerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -566,7 +520,6 @@ Resources:
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
 
-
   # Permission for S3 to Invoke EquityFindings Lambda
   EquityFindingsTriggerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -591,8 +544,6 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
-      
-      
 
   # Permission for S3 to Invoke DirectSkiptrace Lambda
   DirectSkiptraceTriggerLambdaPermission:
@@ -618,7 +569,7 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
-  
+
   # Permission for S3 to Invoke RdsToAirtablePush Lambda
   RdsToAirtablePushTriggerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -627,7 +578,7 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
-  
+
   # Lambda Function to Trigger RdsToAirtablePush Phone Number Job (via S3 Event)
   RdsToAirtablePushPhoneNumberTriggerLambda:
     Type: AWS::Serverless::Function
@@ -643,7 +594,7 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
-  
+
   # Permission for S3 to Invoke RdsToAirtablePush Phone Number Lambda
   RdsToAirtablePushPhoneNumberTriggerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -672,9 +623,6 @@ Outputs:
   ExecutionRoleArn:
     Description: ARN of the ECS Task Execution Role
     Value: !GetAtt ECSTaskExecutionRole.Arn
-  # BatchServiceRoleArn:
-  #   Description: ARN of the Batch Service Role
-  #   Value: !GetAtt BatchServiceRole.Arn
   CountyOverviewTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers CountyOverview job
     Value: !GetAtt CountyOverviewTriggerLambda.Arn
@@ -691,5 +639,5 @@ Outputs:
     Description: ARN of the Lambda function that triggers RdsToAirtablePush job
     Value: !GetAtt RdsToAirtablePushTriggerLambda.Arn
   RdsToAirtablePushPhoneNumberTriggerLambdaArn:
-    Description: ARN of the Lambda function that triggers RdsToAirtablePush Phone Number  job
+    Description: ARN of the Lambda function that triggers RdsToAirtablePush Phone Number job
     Value: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
