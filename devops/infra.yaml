@@ -389,7 +389,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: prefix
-                    Value: equity_finding_logs/
+                    Value: equity_finding_logs_rds/
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
@@ -398,7 +398,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: prefix
-                    Value: equity_finding_logs/
+                    Value: equity_finding_logs_rds/
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
@@ -407,7 +407,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: prefix
-                    Value: equity_finding_logs/
+                    Value: equity_finding_logs_rds/
                   - Name: suffix
                     Value: .log
             Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
