@@ -47,6 +47,10 @@ Parameters:
     Type: String
     Default: "latest"
     Description: Tag for the ECR images (e.g., 202506021515 or latest)
+  S3BucketName:
+    Type: String
+    Default: "vivid-dev-county-details"
+    Description: Name of the S3 bucket for county details (e.g., vivid-dev-county-details)
 
 Resources:
   # IAM Role for ECS Task Execution
@@ -293,7 +297,7 @@ Resources:
       CodeUri: ../src/
       Environment:
         Variables:
-          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+          S3_BUCKET: !Ref S3BucketName
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
@@ -323,7 +327,7 @@ Resources:
   CountyDetailsBucketWithNotifications:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
+      BucketName: !Ref S3BucketName
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:Put
@@ -489,7 +493,7 @@ Resources:
       CodeUri: ../src/
       Environment:
         Variables:
-          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+          S3_BUCKET: !Ref S3BucketName
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
@@ -501,7 +505,7 @@ Resources:
       FunctionName: !Ref PdfExtractionTriggerLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${S3BucketName}
 
   # Lambda Function to Trigger EquityFindings Job (via S3 Event)
   EquityFindingsTriggerLambda:
@@ -515,7 +519,7 @@ Resources:
       CodeUri: ../src/
       Environment:
         Variables:
-          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+          S3_BUCKET: !Ref S3BucketName
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
@@ -527,7 +531,7 @@ Resources:
       FunctionName: !Ref EquityFindingsTriggerLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${S3BucketName}
 
   # Lambda Function to Trigger DirectSkiptrace Job (via S3 Event)
   DirectSkiptraceTriggerLambda:
@@ -543,7 +547,7 @@ Resources:
         - !Ref AppLayers
       Environment:
         Variables:
-          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+          S3_BUCKET: !Ref S3BucketName
 
   # Permission for S3 to Invoke DirectSkiptrace Lambda
   DirectSkiptraceTriggerLambdaPermission:
@@ -552,7 +556,7 @@ Resources:
       FunctionName: !Ref DirectSkiptraceTriggerLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${S3BucketName}
 
   # Lambda Function to Trigger RdsToAirtablePush Job (via S3 Event)
   RdsToAirtablePushTriggerLambda:
@@ -568,7 +572,7 @@ Resources:
         - !Ref AppLayers
       Environment:
         Variables:
-          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+          S3_BUCKET: !Ref S3BucketName
 
   # Permission for S3 to Invoke RdsToAirtablePush Lambda
   RdsToAirtablePushTriggerLambdaPermission:
@@ -577,7 +581,7 @@ Resources:
       FunctionName: !Ref RdsToAirtablePushTriggerLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${S3BucketName}
 
   # Lambda Function to Trigger RdsToAirtablePush Phone Number Job (via S3 Event)
   RdsToAirtablePushPhoneNumberTriggerLambda:
@@ -593,7 +597,7 @@ Resources:
         - !Ref AppLayers
       Environment:
         Variables:
-          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+          S3_BUCKET: !Ref S3BucketName
 
   # Permission for S3 to Invoke RdsToAirtablePush Phone Number Lambda
   RdsToAirtablePushPhoneNumberTriggerLambdaPermission:
@@ -602,7 +606,7 @@ Resources:
       FunctionName: !Ref RdsToAirtablePushPhoneNumberTriggerLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${S3BucketName}
 
 Outputs:
   ComputeEnvironmentArn:
