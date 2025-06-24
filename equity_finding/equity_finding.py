@@ -7,7 +7,7 @@ from sqlalchemy.sql import distinct
 import json
 import boto3
 import os
-from logger_config import setup_logger
+from logger_config_equity import setup_logger
 import time
 import re
 
@@ -83,6 +83,8 @@ def get_parcel_numbers(engine):
                 property_info.c.parcel_or_tax_id,
                 property_info.c.property_address,
                 tax_info.c.amount_owed,
+                property_info.c.deed_book_number,
+                property_info.c.deed_page_number,
             )
             .distinct(property_info.c.case_number)
             .select_from(
@@ -91,12 +93,15 @@ def get_parcel_numbers(engine):
             .where(
                 and_(
                     property_info.c.manual_review == False,
-                    tax_info.c.manual_review == False
+                    tax_info.c.manual_review == False,
+                    property_info.c.equity.is_(None),
+                    tax_info.c.equity.is_(None),
+                    property_info.c.created_at >= '2025-05-13'
                 )
             )
             .order_by(property_info.c.case_number.asc())
         )
-
+        print("QUERY: ",query)
         # query = (
         #     select(
         #         property_info.c.case_number,
@@ -127,7 +132,7 @@ def get_parcel_numbers(engine):
         with engine.connect() as conn:
             result = conn.execute(query)
             # case_numbers_list = [row[0] for row in result.fetchall()]
-            data = [{"case_number": row[0], "parcel_id": row[1],"amount_owed":row[3], "property_address":row[2]} for row in result]
+            data = [{"case_number": row[0], "parcel_id": row[1],"amount_owed":row[3], "property_address":row[2], "deed_book_number": row[4], "deed_page_number": row[5]} for row in result]
 
         logger.info(f"Parcel Data: {data} Length: {len(data)}")
         return data
@@ -149,7 +154,8 @@ def get_geojson(county_id):
             'data': None
         }
 
-    s3_key = f"cleaned_json_v2/{county_name}_{county_id}_geojson/nc_{county_name}_parcels_poly.geojson"
+    s3_key = f"{county_name}_{county_id}_geojson/nc_{county_name}_parcels_poly.geojson"
+    print(f"S3 Key: {s3_key}")
 
     # Ensure local directory exists
     local_dir = "geojson_cache"
@@ -157,7 +163,7 @@ def get_geojson(county_id):
     local_path = os.path.join(local_dir, f"{county_id}_polygon.geojson")
 
     if os.path.exists(local_path):
-        logger.info("Geojson existed!")
+        logger.info("Geojson existed in local path!")
         with open(local_path, 'r') as f:
             geojson_data = json.load(f)
             time.sleep(2)
@@ -266,36 +272,46 @@ def map_with_parcel_id(geojson_file):
             'data': None
         }
 
-# def map_with_book_page_no(geojson_file):
-#     try:
-#         book_page_lookup = {
-#             feature["properties"]["SOURCEREF"]: {
-#                 "PARNO":feature["properties"].get("PARNO"),
-#                 "PARVAL": feature["properties"].get("PARVAL"),
-#                 "SOURCEREF": feature["properties"].get("SOURCEREF"),
-#                 "SADDNO": feature["properties"].get("SADDNO"),
-#                 "SADDPREF": feature["properties"].get("SADDPREF"),
-#                 "SADDSTNAME": feature["properties"].get("SADDSTNAME"),
-#                 "SADDSTR": feature["properties"].get("SADDSTR"),
-#                 "SADDSTSUF": feature["properties"].get("SADDSTSUF"),
-#                 "SADDSTTYP": feature["properties"].get("SADDSTTYP"),
-#                 "SALEDATE": feature["properties"].get("SALEDATE"),
-#                 "SALEDATETX": feature["properties"].get("SALEDATETX"),
-#                 "SCITY": feature["properties"].get("SCITY"),   
-#                 "SITEADD": feature["properties"].get("SITEADD"),
-#                 "OWNFRST": feature["properties"].get("OWNFRST"),
-#                 "OWNLAST": feature["properties"].get("OWNLAST"),
-#                 "OWNNAME": feature["properties"].get("OWNNAME"),
-#                 "MAILADD": feature["properties"].get("MAILADD"),
-#             }
-#             for feature in geojson_file.get("features", [])
-#             if feature["properties"].get("SOURCEREF")
-#         }
-#         time.sleep(2)
-#         return book_page_lookup
-#     except Exception as e:
-#         logger.info(f"[ERROR IN BOOK NO MAPPING:] {str(e)}")
-#         return None
+def map_with_book_page_no(geojson_file):
+    try:
+        book_page_lookup = {}
+        for feature in geojson_file.get("features", []):
+            source_ref = feature["properties"].get("SOURCEREF")
+            if not source_ref:
+                continue
+            
+            # Split SOURCEREF into book and page (e.g., "33649/924" -> ["33649", "924"])
+            try:
+                book, page = source_ref.split('/')
+                book = book.strip()
+                page = page.strip()
+                # Create a normalized key for comparison (e.g., "33649-924")
+                book_page_key = f"{book}-{page}"
+                
+                book_page_lookup[book_page_key] = {
+                    "PARNO": feature["properties"].get("PARNO"),
+                    "PARVAL": feature["properties"].get("PARVAL"),
+                    "SOURCEREF": source_ref,
+                    "SADDNO": feature["properties"].get("SADDNO"),
+                    "SADDSTNAME": feature["properties"].get("SADDSTNAME"),
+                    "SADDSTR": feature["properties"].get("SADDSTR"),
+                    "SADDSTTYP": feature["properties"].get("SADDSTTYP"),
+                    "SCITY": feature["properties"].get("SCITY"),
+                    "SITEADD": feature["properties"].get("SITEADD"),
+                    "OWNFRST": feature["properties"].get("OWNFRST"),
+                    "OWNLAST": feature["properties"].get("OWNLAST"),
+                    "OWNNAME": feature["properties"].get("OWNNAME"),
+                    "MAILADD": feature["properties"].get("MAILADD"),
+                }
+            except ValueError:
+                logger.warning(f"Invalid SOURCEREF format: {source_ref}")
+                continue
+
+        time.sleep(2)
+        return book_page_lookup
+    except Exception as e:
+        logger.info(f"[ERROR IN BOOK NO MAPPING:] {str(e)}")
+        return None
 
 def map_with_mailing_address(geojson_file):
     try:
@@ -461,8 +477,10 @@ def get_property_info():
             case_number = entry["case_number"]
             amount_owed = entry["amount_owed"]
             property_address = entry["property_address"]
+            deed_book_number = entry["deed_book_number"]
+            deed_page_number = entry["deed_page_number"]
             # owner_name = ""
-            logger.info(f"\n{c}.Processing case no {case_number}, parcel id {parcel_id}, property address: {property_address}, amount owed: {amount_owed}")
+            logger.info(f"\n{c}.Processing case no {case_number}, parcel id {parcel_id}, property address: {property_address}, amount owed: {amount_owed}, deed book: {deed_book_number}, deed page: {deed_page_number}")
             county_id = case_number[-3:]
 
             logger.info(f"COUNTY ID: {county_id}")
@@ -536,29 +554,24 @@ def get_property_info():
             else:
                 logger.warning("[PROPERTY ADDRESS IS EMPTY]")
 
-
             if not updated:
-                #Second: Lookup with Parcel ID
+                # Second: Lookup with Parcel ID
                 if parcel_id:
                     logger.info("3.[MAPPING] with Parcel ID...")
                     parcel_lookup_data = map_with_parcel_id(geojson_file)
                     time.sleep(2)
 
-                    
                     geojson_data = parcel_lookup_data.get('data','')
                     parcel_lookup = geojson_data.get('parcel_lookup','')
                     alt_parcel_lookup = geojson_data.get('alt_parcel_lookup','')
 
-                    # if not parcel_lookup and not alt_parcel_lookup:
-                    #     raise ValueError('[PARCEL ID NOT EXISTED] in Geojson!')
-                   
                     if parcel_id in parcel_lookup or parcel_id in alt_parcel_lookup:
                         property_val = parcel_lookup.get(parcel_id) or alt_parcel_lookup.get(parcel_id)
                         logger.info("PARCEL ID MATCHED!")
 
                         if property_val:
                             updated = True
-                            db_insert = update_db(property_val,entry,engine)
+                            db_insert = update_db(property_val, entry, engine)
                             if db_insert:   
                                 updated = True
                             if not db_insert:
@@ -566,11 +579,44 @@ def get_property_info():
 
                     else:
                         logger.warning(f"\n[NOT FOUND]Parcel ID {parcel_id} in JSON")
-                        failed_cases.append({"case_number":case_number,"failed_reason":'PROPERTY ADDRESS & PARCEL ID NOT MATCHED'})
                 else:
                     logger.warning("PARCEL ID is Empty")
-                    failed_cases.append({"case_number":case_number,"failed_reason":'PROPERTY ADDRESS NOT MATCHED & PARCEL NO IS EMPTY'})
 
+            if not updated:
+                # Third: Lookup with Deed Book and Page Number
+                if deed_book_number and deed_page_number:
+                    logger.info("4.[MAPPING] with Deed Book and Page Number...")
+                    book_page_lookup_data = map_with_book_page_no(geojson_file)
+                    time.sleep(2)
+
+                    if not isinstance(book_page_lookup_data, dict):
+                        logger.warning("[LOOKUP FAILED] book_page_lookup_data is not a valid dictionary")
+
+                    # Combine book and page number to match SOURCEREF format (e.g., "33649-924")
+                    source_ref = f"{deed_book_number}-{deed_page_number}"
+                    logger.info(f"Constructed SOURCEREF: {source_ref}")
+
+                    book_page_property_val = book_page_lookup_data.get(source_ref)
+
+                    if book_page_property_val:
+                        logger.info("DEED BOOK AND PAGE NUMBER MATCHED!")
+                        try:
+                            updated = True
+                            db_insert = update_db(book_page_property_val, entry, engine)
+                            if db_insert:
+                                updated = True
+                            else:
+                                raise ValueError("DB UPDATE FAILED")
+                        except Exception as e:
+                            logger.error(f"Exception during DB update: {e}")
+                    else:
+                        logger.warning(f"\n[NOT FOUND] Deed Book {deed_book_number} Page {deed_page_number} in JSON")
+                else:
+                    logger.warning("DEED BOOK OR PAGE NUMBER IS EMPTY")
+
+            if not updated:
+                logger.warning("PROPERTY ADDRESS, PARCEL ID, AND DEED BOOK/PAGE NOT MATCHED")
+                failed_cases.append({"case_number": case_number, "failed_reason": 'PROPERTY ADDRESS, PARCEL ID, AND DEED BOOK/PAGE NOT MATCHED'})
             # if not updated:
             #     #Third: Lookup with Owner name
             #     if owner_name:

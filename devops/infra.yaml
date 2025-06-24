@@ -317,6 +317,7 @@ Resources:
       CodeUri: ../src/
       Environment:
         Variables:
+          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
@@ -419,6 +420,66 @@ Resources:
               S3Key:
                 Rules:
                   - Name: prefix
+                    Value: equity_finding_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Post
+            Filter: 
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: equity_finding_logs/
+                  - Name: suffix
+                    Value: .log 
+            Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: equity_finding_logs/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt RdsToAirtablePushTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: direct_skip_log/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
+          
+          - Event: s3:ObjectCreated:Post
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: direct_skip_log/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: direct_skip_log/
+                  - Name: suffix
+                    Value: .log
+            Function: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn
+
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
                     Value: pdf_extraction_logs/
                   - Name: suffix
                     Value: .log
@@ -444,6 +505,21 @@ Resources:
                     Value: .log
             Function: !GetAtt EquityFindingsTriggerLambda.Arn
 
+  # Lambda Layer for Shared Utilities
+  AppLayers:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Join ['-', [!Ref ResourcePrefix, !Ref Environment,dependencies_layer]]
+      Description: Utilities for vivid Batch api
+      ContentUri: ../layer/
+      CompatibleRuntimes:
+        - python3.9
+        - python3.10
+      LicenseInfo: 'MIT'
+      RetentionPolicy: Delete      
+    Metadata:
+      BuildMethod: python3.9
+
   # Lambda Function to Trigger PdfExtraction Job (via S3 Event)
   PdfExtractionTriggerLambda:
     Type: AWS::Serverless::Function
@@ -456,6 +532,7 @@ Resources:
       CodeUri: ../src/
       Environment:
         Variables:
+          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
@@ -482,6 +559,7 @@ Resources:
       CodeUri: ../src/
       Environment:
         Variables:
+          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
@@ -506,6 +584,11 @@ Resources:
       Runtime: python3.9
       Timeout: 60
       CodeUri: ../src/
+      Layers:
+        - !Ref AppLayers
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
       
       
 
@@ -518,6 +601,55 @@ Resources:
       Principal: s3.amazonaws.com
       SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
 
+  # Lambda Function to Trigger RdsToAirtablePush Job (via S3 Event)
+  RdsToAirtablePushTriggerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${ResourcePrefix}-${Environment}-rds-to-airtable-push-trigger-lambda
+      Handler: rds_to_airtable_push_trigger.sync_postgres_to_airtable
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      CodeUri: ../src/
+      Layers:
+        - !Ref AppLayers
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+  
+  # Permission for S3 to Invoke RdsToAirtablePush Lambda
+  RdsToAirtablePushTriggerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RdsToAirtablePushTriggerLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
+  
+  # Lambda Function to Trigger RdsToAirtablePush Phone Number Job (via S3 Event)
+  RdsToAirtablePushPhoneNumberTriggerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${ResourcePrefix}-${Environment}-rds-to-airtable-push-phone-number
+      Handler: rds_to_airtable_phone_number.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      CodeUri: ../src/
+      Layers:
+        - !Ref AppLayers
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref CountyDetailsBucketWithNotifications
+  
+  # Permission for S3 to Invoke RdsToAirtablePush Phone Number Lambda
+  RdsToAirtablePushPhoneNumberTriggerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RdsToAirtablePushPhoneNumberTriggerLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::${ResourcePrefix}-${Environment}-county-details
 
 Outputs:
   ComputeEnvironmentArn:
@@ -553,3 +685,9 @@ Outputs:
   DirectSkiptraceTriggerLambdaArn:
     Description: ARN of the Lambda function that triggers DirectSkiptrace job
     Value: !GetAtt DirectSkiptraceTriggerLambda.Arn
+  RdsToAirtablePushTriggerLambdaArn:
+    Description: ARN of the Lambda function that triggers RdsToAirtablePush job
+    Value: !GetAtt RdsToAirtablePushTriggerLambda.Arn
+  RdsToAirtablePushPhoneNumberTriggerLambdaArn:
+    Description: ARN of the Lambda function that triggers RdsToAirtablePush Phone Number  job
+    Value: !GetAtt RdsToAirtablePushPhoneNumberTriggerLambda.Arn

@@ -1,0 +1,4 @@
+jsonpickle
+psycopg2-binary
+requests==2.28.2
+aws-lambda-powertools 
