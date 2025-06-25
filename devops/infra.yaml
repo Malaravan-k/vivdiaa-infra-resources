@@ -103,8 +103,8 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - secretsmanager:GetSecretValue
-                Resource: arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod
+                  - secretsmanager:*
+                Resource: '*'
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       

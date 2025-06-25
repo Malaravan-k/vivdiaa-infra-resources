@@ -19,6 +19,7 @@ TOKEN_SCOPE = os.getenv("TOKEN_SCOPE", "api://prd-rpa-web-services.nclea.gov/Use
 EMAIL = os.getenv("EMAIL", "vivdiaa.svc@nclea.gov")
 BASE_URL = os.getenv("BASE_URL", "https://prdaws.nccourts.org/rpa_web_services/api/v1/partycases/")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county-details")
+SECRET_ARN = os.getenv("SECRET_ARN", "")
 
 def handler(event, context):
     try:
@@ -36,7 +37,8 @@ def handler(event, context):
                     {"name": "TOKEN_SCOPE", "value": TOKEN_SCOPE},
                     {"name": "EMAIL", "value": EMAIL},
                     {"name": "BASE_URL", "value": BASE_URL},
-                    {"name": "BUCKET_NAME", "value": BUCKET_NAME}
+                    {"name": "BUCKET_NAME", "value": BUCKET_NAME},
+                    {"name":"SECRET_ARN", "value": SECRET_ARN }
                 ]
             }
         )

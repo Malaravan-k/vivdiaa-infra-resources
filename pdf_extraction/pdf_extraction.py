@@ -14,6 +14,7 @@ import uuid
 import sqlalchemy
 from sqlalchemy import create_engine, MetaData, Table, select, Column, update, String, MetaData, Date, Integer, Boolean, func, select, and_, or_, literal_column
 from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime, date
 import copy
 
 from langchain_openai import ChatOpenAI
@@ -26,9 +27,33 @@ from pydantic import BaseModel, Field
 from typing import List
 from logger_config import setup_logger
 
+SITE_URL = "https://portal-nc.tylertech.cloud/Portal/Home/Dashboard/29"
+BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county") 
+# Database Configuration
+RDS_HOST = os.getenv("RDS_HOST", "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com")
+RDS_PORT = "5432"
+RDS_DBNAME = "vivid"
+RDS_USER = "vivid"
+RDS_PASSWORD = "vivdiaa#4321"
+DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
+SCHEMA_NAME = "vivid-dev-schema"
+
+# AWS SES Configuration
+SENDER_EMAIL = "kalimalaravan0103@gmail.com"
+RECIPIENT_EMAIL = "vigneshkumar@meyicloud.com"
+
 # AWS Secrets Manager Configuration
 secrets_manager_session = boto3.client("secretsmanager", region_name="us-east-1")
-SECRET_ARN = "arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod"
+SECRET_ARN = os.getenv("SecretArn", "arn:aws:secretsmanager:us-east-1:491085409841:secret:vivid/dev/secret-credentials-v1eKvA")
+
+FILE_KEYWORDS = [
+    "affidavit of service", "service affidavit", "note", "promissory note", "aos",
+    "foreclosure notice of hearing", "notice of hearing", "notice of foreclosure sale", "nos",
+    "notice of foreclosure", "noh", "deed of trust", "trust deed",
+    "guardian ad litem", "gal",
+    "lien", "statement of account", "soa", "notice of sale", "service aff", "loan", "loan mod", "loan modification",
+    "return of service", "service returns", "complaint", "lis pendens", "lp", "legacy complete case scan",
+]
 
 def get_secret_data(secret_arn):
     try:
@@ -50,28 +75,7 @@ def load_api_keys(secret_arn):
 
 OPENAI_API_KEY, API_KEY, CAPTCHA_SITE_KEY = load_api_keys(SECRET_ARN)
 
-# Database Configuration
-RDS_HOST = os.getenv("RDS_HOST", "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com")
-RDS_PORT = "5432"
-RDS_DBNAME = "vivid"
-RDS_USER = "vivid"
-RDS_PASSWORD = "vivdiaa#4321"
-DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
-SCHEMA_NAME = "vivid-dev-schema"
-
-# AWS SES Configuration
-SENDER_EMAIL = "kalimalaravan0103@gmail.com"
-RECIPIENT_EMAIL = "vigneshkumar@meyicloud.com"
-
-FILE_KEYWORDS = [
-    "affidavit of service", "service affidavit", "note", "promissory note", "aos",
-    "foreclosure notice of hearing", "notice of hearing", "notice of foreclosure sale", "nos",
-    "notice of foreclosure", "noh", "deed of trust", "trust deed",
-    "guardian ad litem", "gal",
-    "lien", "statement of account", "soa", "notice of sale", "service aff", "loan", "loan mod", "loan modification",
-    "return of service", "service returns", "complaint", "lis pendens", "lp", "legacy complete case scan",
-]
-
+# Setup logger
 logger, LOG_FILE = setup_logger()
 
 def store_logs(LOG_FILE):
