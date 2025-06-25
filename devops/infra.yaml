@@ -51,6 +51,9 @@ Parameters:
     Type: String
     Default: "vivid-dev-county-details"
     Description: Name of the S3 bucket for county details (e.g., vivid-dev-county-details)
+  SecretArn:
+    Type: String
+    Default: ""  # Set this parameter to the ARN of the secret in AWS Secrets Manager
 
 Resources:
   # IAM Role for ECS Task Execution
@@ -301,6 +304,7 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
+          SECRET_ARN: !Ref SecretArn
 
   # EventBridge Rule to Trigger CountyOverview Lambda Daily at 19:00 UTC
   CountyOverviewScheduleRule:
@@ -497,6 +501,7 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
+          SECRET_ARN: !Ref SecretArn
 
   # Permission for S3 to Invoke PdfExtraction Lambda
   PdfExtractionTriggerLambdaPermission:
@@ -523,6 +528,7 @@ Resources:
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
+          SECRET_ARN: !Ref SecretArn
 
   # Permission for S3 to Invoke EquityFindings Lambda
   EquityFindingsTriggerLambdaPermission:
@@ -573,6 +579,7 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref S3BucketName
+          SECRET_ARN: !Ref SecretArn
 
   # Permission for S3 to Invoke RdsToAirtablePush Lambda
   RdsToAirtablePushTriggerLambdaPermission:
@@ -598,6 +605,7 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref S3BucketName
+          SECRET_ARN: !Ref SecretArn
 
   # Permission for S3 to Invoke RdsToAirtablePush Phone Number Lambda
   RdsToAirtablePushPhoneNumberTriggerLambdaPermission:
