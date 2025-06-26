@@ -29,6 +29,9 @@ from logger_config import setup_logger
 
 SITE_URL = "https://portal-nc.tylertech.cloud/Portal/Home/Dashboard/29"
 BUCKET_NAME = os.getenv("BUCKET_NAME", "") 
+print(f"BUCKET_NAME: {BUCKET_NAME}")    
+if not BUCKET_NAME:
+    raise ValueError("BUCKET_NAME environment variable is not set. Please set it to the S3 bucket name where you want to store the logs.")
 # Database Configuration
 RDS_HOST = os.getenv("RDS_HOST", "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com")
 RDS_PORT = "5432"
