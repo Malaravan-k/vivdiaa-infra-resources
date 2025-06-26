@@ -38,10 +38,20 @@ Parameters:
     Description: Number of vCPUs for the containers
     Default: '1'
     AllowedValues: ['0.25', '0.5', '1', '2', '4']
+  ContainerVcpusEquity:
+    Type: String
+    Description: Number of vCPUs for the containers
+    Default: '4'
+    AllowedValues: ['0.25', '0.5', '1', '2', '4']
   ContainerMemory:
     Type: String
     Description: Memory for the containers in MiB
     Default: '2048'
+    AllowedValues: ['512', '1024', '2048', '4096', '8192', '16384', '30720']
+  ContainerMemoryEquity:
+    Type: String
+    Description: Memory for the containers in MiB
+    Default: '16384'
     AllowedValues: ['512', '1024', '2048', '4096', '8192', '16384', '30720']
   ImageTag:
     Type: String
@@ -242,9 +252,9 @@ Resources:
           AssignPublicIp: ENABLED
         ResourceRequirements:
           - Type: VCPU
-            Value: !Ref ContainerVcpus
+            Value: !Ref ContainerVcpusEquity
           - Type: MEMORY
-            Value: !Ref ContainerMemory
+            Value: !Ref ContainerMemoryEquity
         ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
         JobRoleArn: !GetAtt ECSTaskExecutionRole.Arn
         LogConfiguration:
