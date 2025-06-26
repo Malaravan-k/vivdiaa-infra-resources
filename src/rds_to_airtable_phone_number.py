@@ -7,11 +7,10 @@ import concurrent.futures
 from psycopg2.extras import RealDictCursor
 from typing import Dict, List, Any, Optional, Tuple, Set
 import utils  
-import configs 
 
 # Airtable Configuration
-AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID", " ")
-AIRTABLE_PAT = os.environ.get("AIRTABLE_PAT", " ")
+AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID", "appanUA6rMslh7laz")
+AIRTABLE_PAT = os.environ.get("AIRTABLE_PAT", "patCZax01Ca7ZKPbX.3938b0d6fcfacae03f6e88bc75ac42e119f5feb226dd1465828d86f1ba4c4443")
 AIRTABLE_HEADERS = {
     "Authorization": f"Bearer {AIRTABLE_PAT}",
     "Content-Type": "application/json"
@@ -53,7 +52,7 @@ def get_primary_key(conn, schema_name, cursor, table_name: str) -> str:
 
 def get_table_data(conn, schema_name, cursor, table_name: str) -> Tuple[List[Dict], List[Dict], str, List]:
     """Fetch data from PostgreSQL table with filter if specified"""
-    TABLE_CONFIG = configs.TABLE_CONFIG.get(table_name, {})
+    TABLE_CONFIG = utils.TABLE_CONFIG.get(table_name, {})
     print("TABLE_CONFIG;;", TABLE_CONFIG)
     filter_column = TABLE_CONFIG.get("filter_column")
     filter_value = TABLE_CONFIG.get("filter_value")
@@ -512,11 +511,11 @@ def lambda_handler(event,context):
     # Process all tables in the config
     results = {}
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(configs.TABLE_CONFIG)) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(utils.TABLE_CONFIG)) as executor:
         # Submit jobs for each table
         future_to_table = {
             executor.submit(process_table, table_name): table_name
-            for table_name in configs.TABLE_CONFIG.keys()
+            for table_name in utils.TABLE_CONFIG.keys()
         }
         
         # Collect results

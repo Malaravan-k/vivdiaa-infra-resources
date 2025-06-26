@@ -13,13 +13,13 @@ from requests.exceptions import RequestException
 from boto3.exceptions import Boto3Error
  
 # Database configuration
-RDS_HOST = os.getenv('RDS_HOST', "")
-RDS_PORT = os.getenv('RDS_PORT', "")
-RDS_DBNAME = os.getenv('RDS_DBNAME', "")
-RDS_USER = os.getenv('RDS_USER', "")
-RDS_PASSWORD = os.getenv('RDS_PASSWORD', "")
+RDS_HOST = os.getenv('RDS_HOST', "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com")
+RDS_PORT = os.getenv('RDS_PORT', "5432")
+RDS_DBNAME = os.getenv('RDS_DBNAME', "vivid")
+RDS_USER = os.getenv('RDS_USER', "vivid")
+RDS_PASSWORD = os.getenv('RDS_PASSWORD', "vivdiaa#4321")
 DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
-SCHEMA_NAME = os.getenv('SCHEMA_NAME', "")
+SCHEMA_NAME = os.getenv('SCHEMA_NAME', "vivid-dev-schema")
 QUOTED_SCHEMA_NAME = f'"{SCHEMA_NAME}"'
  
 # DirectSkip API configuration
@@ -27,7 +27,7 @@ DIRECTSKIP_API_URL = os.getenv("DIRECTSKIP_API_URL", "https://api0.directskip.co
 API_KEY = os.getenv('API_KEY', "")
  
 # S3 configuration
-S3_BUCKET = "vivid-dev-county-details"
+S3_BUCKET = os.getenv('S3_BUCKET', "")
 S3_FOLDER = os.getenv('S3_FOLDER', "")
  
 # Configure base logging to stdout for CloudWatch

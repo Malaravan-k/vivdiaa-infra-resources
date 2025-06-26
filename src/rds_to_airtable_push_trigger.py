@@ -4,12 +4,11 @@ import concurrent.futures
 from psycopg2.extras import RealDictCursor
 from typing import Dict, List, Any, Optional, Tuple, Set
 import utils 
-import configs
 import os
 
 # Airtable Configuration
-AIRTABLE_BASE_ID = "appanUA6rMslh7laz"
-AIRTABLE_PAT = "patCZax01Ca7ZKPbX.3938b0d6fcfacae03f6e88bc75ac42e119f5feb226dd1465828d86f1ba4c4443"
+AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID", "appanUA6rMslh7laz")
+AIRTABLE_PAT = os.environ.get("AIRTABLE_PAT", "patCZax01Ca7ZKPbX.3938b0d6fcfacae03f6e88bc75ac42e119f5feb226dd1465828d86f1ba4c4443")
 AIRTABLE_HEADERS = {
     "Authorization": f"Bearer {AIRTABLE_PAT}",
     "Content-Type": "application/json"
@@ -512,7 +511,7 @@ def sync_postgres_to_airtable(event, context):
     
     # Create a list of all mappings to process
     mappings_to_process = []
-    for mapping_key, mapping_config in configs.TABLE_MAPPINGS.items():
+    for mapping_key, mapping_config in utils.TABLE_MAPPINGS.items():
         source_table = mapping_config["source_table"]
         airtable_table = mapping_config["airtable_table"]
         filter_config = mapping_config.get("filter", {})
@@ -540,5 +539,3 @@ def sync_postgres_to_airtable(event, context):
     for mapping, result in results.items():
         print(f"{mapping}: {result}")
     print("Sync process completed!")
-
-

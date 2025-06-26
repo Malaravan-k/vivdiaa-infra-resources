@@ -5,9 +5,9 @@ FROM python:3.9
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
-COPY county_overview.py /app
-COPY county_info.json /app
-COPY db_config.py /app
+COPY county_overview/county_overview.py /app
+COPY county_overview/county_info.json /app
+COPY county_overview/db_config.py /app
 
 RUN chmod 777 -R /app
 
