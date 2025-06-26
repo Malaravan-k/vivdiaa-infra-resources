@@ -7,7 +7,7 @@ from sqlalchemy.sql import distinct
 import json
 import boto3
 import os
-from logger_config_equity import setup_logger
+from logger_config import setup_logger
 import time
 import re
 
