@@ -235,7 +235,7 @@ Resources:
         Image: !Sub ${AWS::AccountId}.dkr.ecr.${Region}.amazonaws.com/${ResourcePrefix}-equity-findings-${Environment}-ecr:${ImageTag}
         Command:
           - python3
-          - /app/equity_findings.py
+          - /app/equity_finding.py
         FargatePlatformConfiguration:
           PlatformVersion: LATEST
         NetworkConfiguration:
