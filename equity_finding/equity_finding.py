@@ -93,11 +93,9 @@ def get_parcel_numbers(engine):
             )
             .where(
                 and_(
-                    property_info.c.manual_review == False,
-                    tax_info.c.manual_review == False,
-                    property_info.c.equity.is_(None),
-                    tax_info.c.equity.is_(None),
-                    property_info.c.created_at >= '2025-05-13'
+                    and_(property_info.c.manual_review == False,
+                    property_info.c.ncmap_updated.is_(None),
+                    tax_info.c.manual_review == False),
                 )
             )
             .order_by(property_info.c.case_number.asc())
