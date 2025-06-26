@@ -21,7 +21,7 @@ BASE_URL = os.getenv("BASE_URL", "https://prdaws.nccourts.org/rpa_web_services/a
 BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county-details")
 SECRET_ARN = os.getenv("SECRET_ARN", "")
 
-def handler(event, context):
+def county_overview_trigger(event, context):
     try:
         response = batch_client.submit_job(
             jobName=JOB_NAME,

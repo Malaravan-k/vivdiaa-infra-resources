@@ -21,7 +21,8 @@ RDS_PASSWORD = "vivdiaa#4321"
 DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
 SCHEMA_NAME = "vivid-dev-schema"
 
-BUCKET_NAME = "vivid-cleaned-geojson"
+BUCKET_NAME_CLEANED_GEOJSON = "vivid-cleaned-geojson"
+BUCKET_NAME = os.getenv("BUCKET_NAME", "")
 
 COUNTIES = {
     '910': 'wake',
@@ -56,7 +57,7 @@ logger, LOG_FILE = setup_logger()
 
 def store_logs(LOG_FILE):
     s3 = boto3.client('s3',region_name="us-east-1")
-    LOG_BUCKET_NAME = "vivid-dev-county"
+    LOG_BUCKET_NAME = BUCKET_NAME
     log_key_name = f"equity_finding_logs/{os.path.basename(LOG_FILE)}"
     try:
         s3.upload_file(LOG_FILE, LOG_BUCKET_NAME, log_key_name)
@@ -171,7 +172,7 @@ def get_geojson(county_id):
     else:
         try:
             logger.info("Downloading from S3...")
-            response = s3.get_object(Bucket=BUCKET_NAME, Key=s3_key)
+            response = s3.get_object(Bucket=BUCKET_NAME_CLEANED_GEOJSON, Key=s3_key)
             geojson_data = json.loads(response['Body'].read())
 
             # Save locally for future use

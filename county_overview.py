@@ -48,10 +48,12 @@ INCLUDE_FORSP_COUNTIES = {"Mecklenburg County", "Union County", "Cabarrus County
 
 secret_Arn = "arn:aws:secretsmanager:us-east-1:491085409841:secret:Vivid-pasword-store-8aMVod"
 # Default dates: end date is today, start date is yesterday
-default_end_date = date.today()
-default_start_date = default_end_date - timedelta(days=1)
-start_date_str = os.getenv("START_DATE", default_start_date.strftime("%m/%d/%Y"))
-end_date_str = os.getenv("END_DATE", default_end_date.strftime("%m/%d/%Y"))
+# default_end_date = date.today()
+# default_start_date = default_end_date - timedelta(days=1)
+# start_date_str = os.getenv("START_DATE", default_start_date.strftime("%m/%d/%Y"))
+# end_date_str = os.getenv("END_DATE", default_end_date.strftime("%m/%d/%Y"))
+start_date_str = os.getenv("START_DATE", "06/17/2025")
+end_date_str = os.getenv("END_DATE", "06/26/2025")
 
 
 def fetch_cases_by_date_range(county, odyssey, county_node_ids, bearer_token, start_date, end_date, session):

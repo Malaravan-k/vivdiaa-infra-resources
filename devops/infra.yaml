@@ -293,14 +293,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ResourcePrefix}-${Environment}-county-overview-trigger-lambda
-      Handler: county_overview_trigger.handler
+      Handler: county_overview_trigger.county_overview_trigger
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Timeout: 60
       CodeUri: ../src/
       Environment:
         Variables:
-          S3_BUCKET: !Ref S3BucketName
+          S3_BUCKET: !Sub ${ResourcePrefix}-${Environment}-county-details
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
@@ -490,14 +490,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction-trigger-lambda
-      Handler: pdf_extraction_trigger.handler
+      Handler: pdf_extraction_trigger.pdf_extraction_trigger
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Timeout: 60
       CodeUri: ../src/
       Environment:
         Variables:
-          S3_BUCKET: !Ref S3BucketName
+          S3_BUCKET: !Sub ${ResourcePrefix}-${Environment}-county-details
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
@@ -517,14 +517,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ResourcePrefix}-${Environment}-equity-findings-trigger-lambda
-      Handler: equity_findings_trigger.handler
+      Handler: equity_findings_trigger.equity_findings_trigger
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Timeout: 60
       CodeUri: ../src/
       Environment:
         Variables:
-          S3_BUCKET: !Ref S3BucketName
+          S3_BUCKET: !Sub ${ResourcePrefix}-${Environment}-county-details
           JOB_QUEUE: !Ref FargateJobQueue
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
@@ -553,7 +553,7 @@ Resources:
         - !Ref AppLayers
       Environment:
         Variables:
-          S3_BUCKET: !Ref S3BucketName
+          S3_BUCKET: !Sub ${ResourcePrefix}-${Environment}-county-details
 
   # Permission for S3 to Invoke DirectSkiptrace Lambda
   DirectSkiptraceTriggerLambdaPermission:
@@ -578,7 +578,7 @@ Resources:
         - !Ref AppLayers
       Environment:
         Variables:
-          S3_BUCKET: !Ref S3BucketName
+          S3_BUCKET: !Sub ${ResourcePrefix}-${Environment}-county-details
           SECRET_ARN: !Ref SecretArn
 
   # Permission for S3 to Invoke RdsToAirtablePush Lambda
@@ -604,7 +604,7 @@ Resources:
         - !Ref AppLayers
       Environment:
         Variables:
-          S3_BUCKET: !Ref S3BucketName
+          S3_BUCKET: !Sub ${ResourcePrefix}-${Environment}-county-details
           SECRET_ARN: !Ref SecretArn
 
   # Permission for S3 to Invoke RdsToAirtablePush Phone Number Lambda
