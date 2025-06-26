@@ -27,7 +27,7 @@ DIRECTSKIP_API_URL = os.getenv("DIRECTSKIP_API_URL", "https://api0.directskip.co
 API_KEY = os.getenv('API_KEY', "")
  
 # S3 configuration
-S3_BUCKET = os.getenv('S3_BUCKET', "")
+BUCKET_NAME = os.getenv('BUCKET_NAME', "")
 S3_FOLDER = os.getenv('S3_FOLDER', "")
  
 # Configure base logging to stdout for CloudWatch
@@ -505,7 +505,7 @@ def lambda_handler(event, context):
         # Upload logs to S3
         log_content = log_buffer.getvalue()
         if log_content:
-            if not upload_to_s3(log_content, log_file, S3_BUCKET, S3_FOLDER):
+            if not upload_to_s3(log_content, log_file, BUCKET_NAME, S3_FOLDER):
                 logger.warning(f"skip_trace: Failed to upload log file {log_file} to S3 for request {request_id}")
         else:
             logger.warning(f"skip_trace: No log content to upload to S3 for request {request_id}")

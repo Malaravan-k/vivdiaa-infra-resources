@@ -8,13 +8,18 @@ batch_client = boto3.client("batch")
 JOB_DEFINITION = os.getenv("JOB_DEFINITION", "vivid-dev-case-overview-definition")
 JOB_QUEUE = os.getenv("JOB_QUEUE","vivid-dev-case-overview-queue")
 JOB_NAME = os.getenv("JOB_NAME", "")
-
+BUCKET_NAME = os.getenv("BUCKET_NAME", "")
 def equity_findings_trigger(event, context):
     try:
         response = batch_client.submit_job(
             jobName=JOB_NAME,
             jobQueue=JOB_QUEUE,
             jobDefinition=JOB_DEFINITION,
+            containerOverrides={
+                "environment": [
+                    {"name": "BUCKET_NAME", "value": BUCKET_NAME}
+                ]
+            }
         )
         
         print(f"Batch Job Submitted Successfully: {response['jobId']}")
