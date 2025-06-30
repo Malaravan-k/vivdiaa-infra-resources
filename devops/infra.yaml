@@ -59,7 +59,7 @@ Parameters:
     Description: Tag for the ECR images (e.g., 202506021515 or latest)
   S3BucketName:
     Type: String
-    Default: !Sub ${ResourcePrefix}-${Environment}-county-details
+    Default: ""
     Description: Name of the S3 bucket for county details (e.g., vivid-dev-county-details)
   SecretArn:
     Type: String
@@ -357,7 +357,7 @@ Resources:
   CountyDetailsBucketWithNotifications:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub ${ResourcePrefix}-${Environment}-county-details
+      BucketName: !Ref S3BucketName
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:Put
