@@ -580,6 +580,8 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Sub ${ResourcePrefix}-${Environment}-county-details
+          SECRET_ARN: !Ref SecretArn
+
 
   # Permission for S3 to Invoke DirectSkiptrace Lambda
   DirectSkiptraceTriggerLambdaPermission:

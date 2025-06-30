@@ -6,59 +6,42 @@ import uuid
 import boto3
 import logging
 import sys
+import utils
 from io import StringIO
 from datetime import datetime
 from psycopg2 import Error as Psycopg2Error
 from requests.exceptions import RequestException
 from boto3.exceptions import Boto3Error
  
-# Database configuration
-RDS_HOST = os.getenv('RDS_HOST', "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com")
-RDS_PORT = os.getenv('RDS_PORT', "5432")
-RDS_DBNAME = os.getenv('RDS_DBNAME', "vivid")
-RDS_USER = os.getenv('RDS_USER', "vivid")
-RDS_PASSWORD = os.getenv('RDS_PASSWORD', "vivdiaa#4321")
-DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
-SCHEMA_NAME = os.getenv('SCHEMA_NAME', "vivid-dev-schema")
-QUOTED_SCHEMA_NAME = f'"{SCHEMA_NAME}"'
- 
+logger, LOG_FILE = utils.setup_logger()
+
+SECRET_ARN = os.environ.get("SecretArn")
+print("SECRET_ARN;;",SECRET_ARN)
+
 # DirectSkip API configuration
 DIRECTSKIP_API_URL = os.getenv("DIRECTSKIP_API_URL", "https://api0.directskip.com/v2/search_contact.php")
 API_KEY = os.getenv('API_KEY', "")
  
 # S3 configuration
-BUCKET_NAME = os.getenv('BUCKET_NAME', "")
+S3_BUCKET = os.getenv('S3_BUCKET', "")
 S3_FOLDER = os.getenv('S3_FOLDER', "")
- 
-# Configure base logging to stdout for CloudWatch
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
- 
-def get_db_connection():
+
+def store_logs(log_file):
+    s3 = boto3.client('s3', region_name="us-east-1")
+    log_key_name = f"{S3_FOLDER}/{os.path.basename(log_file)}"
     try:
-        conn = psycopg2.connect(
-            host=RDS_HOST,
-            port=RDS_PORT,
-            dbname=RDS_DBNAME,
-            user=RDS_USER,
-            password=RDS_PASSWORD
-        )
-        logger.info("Database connection established successfully.")
-        return conn
-    except Psycopg2Error as e:
-        logger.error(f"get_db_connection: Database connection error: {e}")
-        return None
+        if os.path.exists(log_file):
+            s3.upload_file(log_file, S3_BUCKET, log_key_name)
+            logger.info(f"Log file {log_file} uploaded to s3://{S3_BUCKET}/{log_key_name}")
+            print(f"Log file {log_file} uploaded to s3://{S3_BUCKET}/{log_key_name}")
+        else:
+            logger.warning(f"Log file {log_file} does not exist, cannot upload to S3")
+            print(f"Log file {log_file} does not exist, cannot upload to S3")
     except Exception as e:
-        logger.error(f"get_db_connection: Unexpected error: {e}")
-        return None
+        logger.error(f"Failed to upload log to S3: {str(e)}")
+        print(f"Failed to upload log to S3: {str(e)}")
  
-def check_if_column_exists(conn, table_name, column_name):
+def check_if_column_exists(conn, schema_name, cursor, table_name, column_name):
     try:
         cursor = conn.cursor()
         query = f"""
@@ -70,7 +53,7 @@ def check_if_column_exists(conn, table_name, column_name):
             AND column_name = %s
         );
         """
-        cursor.execute(query, (SCHEMA_NAME, table_name, column_name))
+        cursor.execute(query, (schema_name, table_name, column_name))
         exists = cursor.fetchone()[0]
         cursor.close()
         return exists
@@ -84,12 +67,12 @@ def check_if_column_exists(conn, table_name, column_name):
         if 'cursor' in locals():
             cursor.close()
  
-def add_column(conn, table_name, column_name, column_type):
+def add_column(conn, schema_name, cursor, table_name, column_name, column_type):
     cursor = None
     try:
         cursor = conn.cursor()
         query = f"""
-        ALTER TABLE {QUOTED_SCHEMA_NAME}."{table_name}"
+        ALTER TABLE "{schema_name}"."{table_name}"
         ADD COLUMN IF NOT EXISTS "{column_name}" {column_type};
         """
         cursor.execute(query)
@@ -108,7 +91,7 @@ def add_column(conn, table_name, column_name, column_type):
         if cursor:
             cursor.close()
  
-def get_properties(conn, batch_start=None, batch_end=None):
+def get_properties(conn, schema_name, cursor, batch_start=None, batch_end=None):
     cursor = None
     try:
         cursor = conn.cursor()
@@ -124,7 +107,7 @@ def get_properties(conn, batch_start=None, batch_end=None):
             zip_code,
             property_address,
             owner_name
-        FROM {QUOTED_SCHEMA_NAME}."property_info"
+        FROM "{schema_name}"."property_info"
         WHERE equity_status IN ('MID', 'HIGH')
         AND skip_trace_status IS NULL
         ORDER BY case_number, id
@@ -235,14 +218,14 @@ def extract_phone_numbers(api_response):
         logger.error(f"extract_phone_numbers: Unexpected error: {e}")
         return []
  
-def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, failure_reason):
+def update_property_with_phone_numbers(conn, schema_name, cursor, id, case_number, phone_numbers, failure_reason):
     cursor = None
     try:
         cursor = conn.cursor()
         if phone_numbers and len(phone_numbers) > 0:
             cursor.execute(f"""
                 SELECT case_number, parcel_or_tax_id, owner_name, first_name, last_name
-                FROM {QUOTED_SCHEMA_NAME}."property_info"
+                FROM "{schema_name}"."property_info"
                 WHERE id = %s
             """, (id,))
             row = cursor.fetchone()
@@ -260,7 +243,7 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
                 phone_no3_type = 'work' if phone_no3 else None
  
                 insert_query = f"""
-                INSERT INTO {QUOTED_SCHEMA_NAME}.phone_number_info (
+                INSERT INTO "{schema_name}".phone_number_info (
                     id,
                     case_number,
                     parcel_or_tax_id,
@@ -301,7 +284,7 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
                 ))
  
                 update_query = f"""
-                UPDATE {QUOTED_SCHEMA_NAME}."property_info"
+                UPDATE "{schema_name}"."property_info"
                 SET
                     skip_trace_status = 'true',
                     skip_trace_failure_reason = NULL,
@@ -314,7 +297,7 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
                 logger.info(f"update_property_with_phone_numbers:  Inserted phone numbers and updated skip_trace_status to 'true' for case {case_number} (id: {id})")
             else:
                 update_query = f"""
-                UPDATE {QUOTED_SCHEMA_NAME}."property_info"
+                UPDATE "{schema_name}"."property_info"
                 SET
                     skip_trace_status = 'false',
                     skip_trace_failure_reason = %s,
@@ -327,7 +310,7 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
                 logger.info(f"update_property_with_phone_numbers:  Could not find property details for id: {id}, updated skip_trace_status to 'false'")
         else:
             update_query = f"""
-            UPDATE {QUOTED_SCHEMA_NAME}."property_info"
+            UPDATE "{schema_name}"."property_info"
             SET
                 skip_trace_status = 'false',
                 skip_trace_failure_reason = %s,
@@ -346,7 +329,7 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
         if cursor:
             try:
                 update_query = f"""
-                UPDATE {QUOTED_SCHEMA_NAME}."property_info"
+                UPDATE "{schema_name}"."property_info"
                 SET
                     skip_trace_status = 'false',
                     skip_trace_failure_reason = %s,
@@ -364,7 +347,7 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
         if cursor:
             try:
                 update_query = f"""
-                UPDATE {QUOTED_SCHEMA_NAME}."property_info"
+                UPDATE "{schema_name}"."property_info"
                 SET
                     skip_trace_status = 'false',
                     skip_trace_failure_reason = %s,
@@ -381,36 +364,10 @@ def update_property_with_phone_numbers(conn, id, case_number, phone_numbers, fai
         if cursor:
             cursor.close()
  
-def upload_to_s3(log_content, log_file_name, bucket, folder):
-    try:
-        s3_client = boto3.client('s3')
-        s3_key = f"{folder}/{log_file_name}"
-        s3_client.put_object(
-            Bucket=bucket,
-            Key=s3_key,
-            Body=log_content.encode('utf-8')
-        )
-        logger.info(f"upload_to_s3: Successfully uploaded log to s3://{bucket}/{s3_key}")
-        return True
-    except Boto3Error as e:
-        logger.error(f"upload_to_s3: S3 upload error for {log_file_name}: {e}")
-        return False
-    except Exception as e:
-        logger.error(f"upload_to_s3: Unexpected error while uploading {log_file_name}: {e}")
-        return False
-
 def lambda_handler(event, context):
     # Generate unique request ID and log file name
     request_id = str(uuid.uuid4())
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"skip_trace_log_{timestamp}_{request_id}.log"
- 
-    # Create a new StringIO buffer and handler for this request
-    log_buffer = StringIO()
-    log_handler = logging.StreamHandler(log_buffer)
-    log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(log_handler)
- 
+    log_file = LOG_FILE  # Use LOG_FILE from setup_logger
     try:
         logger.info(f"skip_trace: Starting request {request_id}")
  
@@ -419,12 +376,11 @@ def lambda_handler(event, context):
         batch_end = event.get('batch_end')
         
         if batch_start is not None and batch_end is not None:
-            log_file = f"skip_trace_log_batch_{batch_start}_to_{batch_end}_{timestamp}_{request_id}.log"
             logger.info(f"skip_trace: Lambda request {request_id} with batch_start={batch_start}, batch_end={batch_end}")
         else:
             logger.info(f"skip_trace: Lambda request {request_id} without batch parameters")
  
-        conn = get_db_connection()
+        conn, cursor, schema_name = utils.dbConnection(SECRET_ARN)
         if not conn:
             logger.error(f"skip_trace: Failed to connect to database for request {request_id}")
             return {
@@ -437,8 +393,8 @@ def lambda_handler(event, context):
             ("skip_trace_status", "TEXT"),
             ("skip_trace_failure_reason", "TEXT")
         ]:
-            if not check_if_column_exists(conn, "property_info", column):
-                if not add_column(conn, "property_info", column, col_type):
+            if not check_if_column_exists(conn, schema_name, cursor, "property_info", column):
+                if not add_column(conn, schema_name, cursor, "property_info", column, col_type):
                     logger.error(f"skip_trace: Failed to add column {column} for request {request_id}")
                     conn.close()
                     return {
@@ -446,7 +402,7 @@ def lambda_handler(event, context):
                         "body": json.dumps({"status": "error", "message": f"Failed to add column {column}"})
                     }
  
-        properties = get_properties(conn, batch_start, batch_end)
+        properties = get_properties(conn, schema_name, cursor,batch_start, batch_end)
         if not properties:
             logger.info(f"skip_trace: No properties to process for request {request_id}")
             conn.close()
@@ -485,7 +441,7 @@ def lambda_handler(event, context):
                     failure_reason = "Insufficient data (missing name and address)"
                     phone_numbers = []
  
-                status = update_property_with_phone_numbers(conn, id, case_number, phone_numbers, failure_reason)
+                status = update_property_with_phone_numbers(conn, schema_name, cursor, id, case_number, phone_numbers, failure_reason)
  
                 report_data.append({
                     'id': id,
@@ -501,15 +457,7 @@ def lambda_handler(event, context):
                 logger.info(f"skip_trace: Processed case {case_number}, id {id} - {status}, Phone numbers: {phone_numbers}, API Call Type: {api_call_type}, Reason: {failure_reason} for request {request_id}")
             except Exception as e:
                 logger.error(f"skip_trace: Error processing case {case_number} (id: {id}) for request {request_id}: {e}")
- 
-        # Upload logs to S3
-        log_content = log_buffer.getvalue()
-        if log_content:
-            if not upload_to_s3(log_content, log_file, BUCKET_NAME, S3_FOLDER):
-                logger.warning(f"skip_trace: Failed to upload log file {log_file} to S3 for request {request_id}")
-        else:
-            logger.warning(f"skip_trace: No log content to upload to S3 for request {request_id}")
- 
+
         conn.close()
         logger.info(f"skip_trace: Request {request_id} completed successfully")
         
@@ -533,7 +481,4 @@ def lambda_handler(event, context):
             "body": json.dumps({"status": "error", "message": f"Fatal error: {str(e)}"})
         }
     finally:
-        # Clean up logging handler and buffer
-        logger.removeHandler(log_handler)
-        log_handler.close()
-        log_buffer.close()
+        store_logs(log_file)
