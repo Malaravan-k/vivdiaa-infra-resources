@@ -12,14 +12,14 @@ import time
 import re
 
 # Database Configuration
-RDS_HOST = "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com"
+RDS_HOST = os.getenv("RDS_HOST", "vivid-dev-database.ccn2i0geapl8.us-east-1.rds.amazonaws.com")
 RDS_PORT = "5432"
 RDS_DBNAME = "vivid"
 RDS_USER = "vivid"
 RDS_PASSWORD = "vivdiaa#4321"
 
 DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
-SCHEMA_NAME = "vivid-dev-schema"
+SCHEMA_NAME = os.getenv("SCHEMA", "vivid-dev-schema")
 
 BUCKET_NAME_CLEANED_GEOJSON = "vivid-cleaned-geojson"
 BUCKET_NAME = os.getenv("BUCKET_NAME", "")

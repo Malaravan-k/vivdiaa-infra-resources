@@ -64,6 +64,10 @@ Parameters:
   SecretArn:
     Type: String
     Default: ""  # Set this parameter to the ARN of the secret in AWS Secrets Manager
+  RDSHost:
+    Type: String
+    Default: ""
+    Description: Hostname of the RDS database instance
 
 Resources:
   # IAM Role for ECS Task Execution
@@ -331,6 +335,8 @@ Resources:
           JOB_DEFINITION: !Ref CountyOverviewJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-county-overview
           SECRET_ARN: !Ref SecretArn
+          RDS_HOST: !Ref RDSHost
+          SCHEMA: !Sub ${ResourcePrefix}-${Environment}-schema
 
   # EventBridge Rule to Trigger CountyOverview Lambda Daily at 19:00 UTC
   CountyOverviewScheduleRule:
@@ -528,6 +534,8 @@ Resources:
           JOB_DEFINITION: !Ref PdfExtractionJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-pdf-extraction
           SECRET_ARN: !Ref SecretArn
+          RDS_HOST: !Ref RDSHost
+          SCHEMA: !Sub ${ResourcePrefix}-${Environment}-schema
 
   # Permission for S3 to Invoke PdfExtraction Lambda
   PdfExtractionTriggerLambdaPermission:
@@ -555,6 +563,8 @@ Resources:
           JOB_DEFINITION: !Ref EquityFindingsJobDefinition
           JOB_NAME: !Sub ${ResourcePrefix}-${Environment}-equity-findings
           SECRET_ARN: !Ref SecretArn
+          RDS_HOST: !Ref RDSHost
+          SCHEMA: !Sub ${ResourcePrefix}-${Environment}-schema
 
   # Permission for S3 to Invoke EquityFindings Lambda
   EquityFindingsTriggerLambdaPermission:
@@ -581,6 +591,8 @@ Resources:
         Variables:
           BUCKET_NAME: !Sub ${ResourcePrefix}-${Environment}-county-details
           SECRET_ARN: !Ref SecretArn
+          RDS_HOST: !Ref RDSHost
+          SCHEMA: !Sub ${ResourcePrefix}-${Environment}-schema
 
 
   # Permission for S3 to Invoke DirectSkiptrace Lambda
@@ -608,6 +620,8 @@ Resources:
         Variables:
           BUCKET_NAME: !Sub ${ResourcePrefix}-${Environment}-county-details
           SECRET_ARN: !Ref SecretArn
+          RDS_HOST: !Ref RDSHost
+          SCHEMA: !Sub ${ResourcePrefix}-${Environment}-schema
 
   # Permission for S3 to Invoke RdsToAirtablePush Lambda
   RdsToAirtablePushTriggerLambdaPermission:
@@ -634,6 +648,8 @@ Resources:
         Variables:
           BUCKET_NAME: !Sub ${ResourcePrefix}-${Environment}-county-details
           SECRET_ARN: !Ref SecretArn
+          RDS_HOST: !Ref RDSHost
+          SCHEMA: !Sub ${ResourcePrefix}-${Environment}-schema
 
   # Permission for S3 to Invoke RdsToAirtablePush Phone Number Lambda
   RdsToAirtablePushPhoneNumberTriggerLambdaPermission:

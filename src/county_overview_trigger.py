@@ -20,6 +20,8 @@ EMAIL = os.getenv("EMAIL", "vivdiaa.svc@nclea.gov")
 BASE_URL = os.getenv("BASE_URL", "https://prdaws.nccourts.org/rpa_web_services/api/v1/partycases/")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "vivid-dev-county-details")
 SECRET_ARN = os.getenv("SECRET_ARN", "")
+RDS_HOST = os.getenv("RDS_HOST", "")
+SCHEMA = os.getenv("SCHEMA", "vivid-dev-schema")  # Default schema name
 
 def county_overview_trigger(event, context):
     try:
@@ -38,7 +40,9 @@ def county_overview_trigger(event, context):
                     {"name": "EMAIL", "value": EMAIL},
                     {"name": "BASE_URL", "value": BASE_URL},
                     {"name": "BUCKET_NAME", "value": BUCKET_NAME},
-                    {"name":"SECRET_ARN", "value": SECRET_ARN }
+                    {"name":"SECRET_ARN", "value": SECRET_ARN },
+                    {"name": "RDS_HOST", "value": RDS_HOST},
+                    {"name": "SCHEMA", "value": SCHEMA}
                 ]
             }
         )

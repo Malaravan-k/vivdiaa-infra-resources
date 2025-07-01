@@ -39,7 +39,7 @@ RDS_DBNAME = "vivid"
 RDS_USER = "vivid"
 RDS_PASSWORD = "vivdiaa#4321"
 DATABASE_URL = f"postgresql://{RDS_USER}:{RDS_PASSWORD}@{RDS_HOST}:{RDS_PORT}/{RDS_DBNAME}"
-SCHEMA_NAME = "vivid-dev-schema"
+SCHEMA_NAME = os.getenv("SCHEMA", "vivid-dev-schema")  
 
 # AWS SES Configuration
 SENDER_EMAIL = "kalimalaravan0103@gmail.com"

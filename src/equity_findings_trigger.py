@@ -9,6 +9,8 @@ JOB_DEFINITION = os.getenv("JOB_DEFINITION", "vivid-dev-case-overview-definition
 JOB_QUEUE = os.getenv("JOB_QUEUE","vivid-dev-case-overview-queue")
 JOB_NAME = os.getenv("JOB_NAME", "")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "")
+RDS_HOST = os.getenv("RDS_HOST", "")
+SCHEMA = os.getenv("SCHEMA", "vivid-dev-schema")  # Default schema name
 def equity_findings_trigger(event, context):
     try:
         response = batch_client.submit_job(
@@ -17,7 +19,9 @@ def equity_findings_trigger(event, context):
             jobDefinition=JOB_DEFINITION,
             containerOverrides={
                 "environment": [
-                    {"name": "BUCKET_NAME", "value": BUCKET_NAME}
+                    {"name": "BUCKET_NAME", "value": BUCKET_NAME},
+                    {"name": "RDS_HOST", "value": RDS_HOST},
+                    {"name": "SCHEMA", "value": SCHEMA}
                 ]
             }
         )
